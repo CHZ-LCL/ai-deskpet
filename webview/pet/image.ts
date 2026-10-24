@@ -18,6 +18,9 @@ export async function createImageRenderer(context: RendererContext): Promise<Pet
   context.container.appendChild(root);
   applyScale(root, context.scale);
 
+  // 横版 / 竖版图片用各自的宽高比撑开外框，否则宽图会被压成一条细带
+  const block = context.container.parentElement;
+
   await new Promise<void>((resolve, reject) => {
     if (image.complete) {
       if (image.naturalWidth > 0) {
@@ -35,6 +38,14 @@ export async function createImageRenderer(context: RendererContext): Promise<Pet
     );
   });
 
+  if (block && image.naturalWidth > 0 && image.naturalHeight > 0) {
+    const ratio = image.naturalWidth / image.naturalHeight;
+    block.style.setProperty('--pet-aspect', ratio.toFixed(3));
+    block.style.width =
+      ratio >= 1.25 ? 'min(96%, 392px)' : ratio <= 0.8 ? 'min(76%, 268px)' : 'min(86%, 292px)';
+    document.body.classList.toggle('pet-wide', ratio >= 1.6);
+  }
+
   return {
     play(action: PetAction) {
       playActionClass(root, action);
@@ -47,6 +58,10 @@ export async function createImageRenderer(context: RendererContext): Promise<Pet
     },
     destroy() {
       root.remove();
+      if (block) {
+        block.style.removeProperty('--pet-aspect');
+        block.style.width = '';
+      }
     },
   };
 }

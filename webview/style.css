@@ -181,7 +181,7 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding: 116px 10px 24px;
+  padding: var(--speech-space, 12px) 10px 24px;
 }
 
 /* 给气泡预留固定高度，避免它盖住桌宠的头 */
@@ -189,7 +189,7 @@ button {
   position: relative;
   width: min(84%, 292px);
   max-height: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: var(--pet-aspect, 1);
   flex: 0 1 auto;
 }
 
@@ -250,7 +250,7 @@ button {
   bottom: calc(100% - 2px);
   transform: translateX(-50%);
   z-index: 8;
-  width: min(106%, 304px);
+  width: min(106%, 304px, calc(100vw - 22px));
   padding: 9px 11px 10px;
   border-radius: 13px;
   border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
@@ -1326,6 +1326,25 @@ button {
   100% {
     opacity: 0;
     translate: 6px -12px;
+  }
+}
+
+/* 宽幅形象（例如横版立绘）把舞台让一点给对话区 */
+body.pet-wide .stage {
+  flex: 1 1 40%;
+}
+
+body.pet-wide .chat {
+  flex: 1 1 60%;
+}
+
+@media (min-width: 620px) {
+  body.pet-wide .stage {
+    flex: 1 1 52%;
+  }
+
+  body.pet-wide .chat {
+    flex: 1 1 48%;
   }
 }
 

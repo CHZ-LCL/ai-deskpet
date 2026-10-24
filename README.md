@@ -107,8 +107,8 @@ ollama pull qwen2.5-coder:14b
 
 | 类型 | 支持格式 | 说明 |
 | --- | --- | --- |
-| 内置 | 无 | 纯 SVG 矢量形象，带呼吸 / 眨眼 / 摆尾 / 表情动作，不依赖素材 |
-| 图片 | png / jpg / gif / webp / svg / avif | 建议透明背景、竖构图、1000px 以上 |
+| 默认 | 随包附带 | `assets/default/pet.png`（当前是一张金属水管贴纸）；删掉后回退到 SVG 小豆 |
+| 图片 | png / jpg / gif / webp / svg / avif | 建议透明背景、1000px 以上；横版会自动加宽展示 |
 | Live2D | `.model3.json`（Cubism 4） | 需要自备 Live2D 官方的 `live2dcubismcore.min.js` |
 | 3D | `.vrm` / `.glb` / `.gltf` | VRM 支持表情与骨骼，普通 GLB 只做整体动效 |
 
@@ -121,6 +121,14 @@ ollama pull qwen2.5-coder:14b
 - 3D：选中 `.vrm` / `.glb`，同样会带上同目录的贴图与 `.bin`。
 
 素材统一复制到插件的 globalStorage，源文件删了也不影响。
+
+图片形象会自动适配宽高比：横版图片会把舞台撑宽、把更多空间让给对话区，不会缩成中间一条细带。
+
+### 打包默认形象
+
+当前仓库自带一张默认形象 `assets/default/pet.png`（金属水管透明贴纸，仅作演示）。
+想换成自己的画，直接覆盖这个文件，或把图片放进 `assets/default/`（取目录里第一张），
+它就会成为「默认形象」的外观。详见 [assets/default/README.md](assets/default/README.md)。
 
 ### Live2D 的额外一步
 
@@ -143,16 +151,6 @@ ollama pull qwen2.5-coder:14b
 - three.js 会按需加载（约 1.3MB），首次切到 3D 时稍有延迟。
 - 低端集成显卡上建议把 `deskpet.pet.scale` 调小，或改用图片形象。
 
-### 打包默认形象
-
-把图片放到 `assets/default/`（文件名随意），它就会成为「内置形象」的默认外观：
-
-```
-assets/default/pet.png
-```
-
-详见 [assets/default/README.md](assets/default/README.md)。
-
 ---
 
 ## 换声音
@@ -165,6 +163,7 @@ assets/default/pet.png
 
 五个槽位：`click`（点击）、`happy`（开心 / 保存成功）、`alert`（提醒 / 报错）、`error`（出错）、`switch`（切换形象）。
 
+当前随包附带了 `assets/sounds/click.mp3`（金属管敲击声），其余槽位默认使用合成音。
 在 **音效库**（右上角 ♪）里可以逐个场景下拉选择、试听，或点「导入音效文件」新增。
 语音朗读在 **设置** 里打开，使用系统语音合成（Windows 上通常是微软的中文语音包）。
 

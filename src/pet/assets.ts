@@ -150,13 +150,15 @@ export class AssetStore {
     const renderer = config.get<RendererKind>('pet.renderer', 'builtin');
     const configuredPath = config.get<string>('pet.modelPath', '').trim();
     const currentAbs = configuredPath ? this.toAbsolute(configuredPath) : undefined;
+    const defaultImage = await this.findDefaultImage();
 
     const items: AssetItem[] = [
       {
         id: 'builtin',
-        name: '内置形象 · 小豆',
+        name: defaultImage ? '默认形象' : '内置形象 · 小豆',
         kind: 'builtin',
         source: 'builtin',
+        previewUri: defaultImage ? webview.asWebviewUri(vscode.Uri.file(defaultImage)).toString() : undefined,
         active: renderer === 'builtin' || !currentAbs,
       },
     ];

@@ -52,6 +52,13 @@ export class PetEngine {
     const generation = ++this.generation;
     this.destroyHandle();
     this.container.innerHTML = '';
+    // 图片形象会改写外框宽高比，切回其他渲染器前先还原
+    const block = this.container.parentElement;
+    if (block) {
+      block.style.removeProperty('--pet-aspect');
+      block.style.width = '';
+    }
+    document.body.classList.remove('pet-wide');
     this.config = config;
 
     let handle: PetRendererHandle | undefined;

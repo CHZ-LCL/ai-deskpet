@@ -309,6 +309,7 @@ function showSay(
     dom.speechActions.appendChild(button);
   }
   dom.speech.hidden = false;
+  syncSpeechSpace();
 
   if (speechTimer) {
     window.clearTimeout(speechTimer);
@@ -318,8 +319,15 @@ function showSay(
   }
 }
 
+/** 气泡多高，就给舞台顶部留多少空间，避免挡住形象或留一片空白。 */
+function syncSpeechSpace(): void {
+  const space = dom.speech.hidden ? 12 : dom.speech.offsetHeight + 16;
+  dom.petAnchor.style.setProperty('--speech-space', `${space}px`);
+}
+
 function hideSay(): void {
   dom.speech.hidden = true;
+  syncSpeechSpace();
   if (speechTimer) {
     window.clearTimeout(speechTimer);
     speechTimer = undefined;
