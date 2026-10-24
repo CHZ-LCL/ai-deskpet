@@ -159,22 +159,42 @@ async function resetPet(host: PetHost, state: PetState): Promise<void> {
 
 function registerReactions(context: vscode.ExtensionContext, host: PetHost): void {
   const config = () => vscode.workspace.getConfiguration('deskpet');
+
+  // 久坐提醒：按“连续编码时长”计时，中途休息会自动重新开始
+  let codingSince = Date.now();
   let lastActivity = Date.now();
+  const markActive = () => {
+    const now = Date.now();
+    if (now - lastActivity > 5 * 60_000) {
+      // 超过 5 分钟没动过，视为休息过
+      codingSince = now;
+    }
+    lastActivity = now;
+  };
 
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
-      lastActivity = Date.now();
+      markActive();
       if (!config().get<boolean>('pet.reactOnSave', true) || document.uri.scheme !== 'file') {
         return;
       }
       host.touchAffection(1);
       host.react('happy');
     }),
+    vscode.window.onDidChangeWindowState((windowState) => {
+      if (windowState.focused) {
+        markActive();
+      }
+    }),
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (event.document.uri.scheme === 'file') {
+        markActive();
+      }
+    }),
   );
 
   let diagnosticsTimer: NodeJS.Timeout | undefined;
   const lastHint = new Map<string, number>();
-
   context.subscriptions.push(
     vscode.languages.onDidChangeDiagnostics((event) => {
       if (!config().get<boolean>('pet.reactOnError', true)) {
@@ -216,31 +236,42 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost): voi
   );
 
   context.subscriptions.push(
-    vscode.window.onDidChangeWindowState((windowState) => {
-      if (windowState.focused) {
-        lastActivity = Date.now();
+    vscode.tasks.onDidEndTaskProcess((event) => {
+      if (event.exitCode === undefined || event.exitCode === 0) {
+        return;
       }
-    }),
-    vscode.workspace.onDidChangeTextDocument((event) => {
-      if (event.document.uri.scheme === 'file') {
-        lastActivity = Date.now();
+      const name = event.execution.task.name;
+      if (!/(build|compile|test|构建|编译|测试)/i.test(name)) {
+        return;
       }
+      host.react('alert');
+      host.say(`「${name}」没有通过，要我帮你看看代码吗？`, {
+        action: 'alert',
+        ttl: 12_000,
+        actions: [{ label: '讲解当前文件', command: CMD.explain }],
+      });
     }),
   );
 
   // 久坐提醒：只在持续编码时触发
   const timer = setInterval(() => {
     const minutes = config().get<number>('pet.breakReminderMinutes', 50);
+    const now = Date.now();
+    if (now - lastActivity > 5 * 60_000) {
+      // 人已经离开了，重新计时
+      codingSince = now;
+      lastActivity = now;
+      return;
+    }
     if (!minutes || minutes <= 0) {
       return;
     }
-    const idleMinutes = (Date.now() - lastActivity) / 60_000;
-    if (idleMinutes >= minutes) {
-      lastActivity = Date.now();
-      host.say(`已经连续写了 ${Math.round(idleMinutes)} 分钟啦，站起来接杯水、看看远处吧。`, {
+    if (now - codingSince >= minutes * 60_000) {
+      host.say(`已经连续写了 ${Math.round((now - codingSince) / 60_000)} 分钟啦，站起来接杯水、看看远处吧。`, {
         action: 'sleep',
         ttl: 15_000,
       });
+      codingSince = now;
     }
   }, 60_000);
   context.subscriptions.push(new vscode.Disposable(() => clearInterval(timer)));

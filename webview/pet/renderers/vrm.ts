@@ -49,10 +49,10 @@ export async function create(context: RendererContext): Promise<PetRendererHandl
     // VRM 0.x 是 -Z 朝向，转到 +Z 面向摄像机
     try {
       (VRMUtils as unknown as { rotateVRM0?: (model: VRM) => void }).rotateVRM0?.(vrm);
+      VRMUtils.removeUnnecessaryVertices?.(gltf.scene);
     } catch {
-      // 非 VRM0 模型会抛错，忽略
+      // 非 VRM0 模型或几何体优化失败都不影响渲染
     }
-    VRMUtils.removeUnnecessaryVertices?.(gltf.scene);
   }
   scene.add(avatar);
 

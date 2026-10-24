@@ -251,16 +251,29 @@ export class AssetStore {
     await fs.mkdir(folder, { recursive: true });
 
     try {
-      const sourceDir = path.dirname(sourcePath);
-      // Live2D / glTF 依赖同目录的贴图与 .moc3 / .bin，整目录复制最稳妥
-      await fs.cp(sourceDir, folder, {
-        recursive: true,
-        force: true,
-        filter: (src) => {
-          const base = path.basename(src);
-          return !base.startsWith('.') && base !== 'node_modules';
-        },
-      });
+      const lower = sourcePath.toLowerCase();
+      // 图片、VRM、GLB 都是单文件（贴图内嵌）；只有 Live2D 和 glTF 需要同目录的附属文件
+      const singleFile = kind === 'image' || /\.(vrm|glb)$/.test(lower);
+      if (singleFile) {
+        await fs.copyFile(sourcePath, path.join(folder, path.basename(sourcePath)));
+      } else {
+        const stats = await dirStats(path.dirname(sourcePath));
+        if (stats.files > 800 || stats.bytes > 200 * 1024 * 1024) {
+          await fs.rm(folder, { recursive: true, force: true });
+          void vscode.window.showErrorMessage(
+            `这个目录太大了（${stats.files} 个文件，约 ${(stats.bytes / 1024 / 1024).toFixed(0)} MB）。请把模型单独放在一个文件夹里再导入。`,
+          );
+          return;
+        }
+        await fs.cp(path.dirname(sourcePath), folder, {
+          recursive: true,
+          force: true,
+          filter: (src) => {
+            const base = path.basename(src);
+            return !base.startsWith('.') && base !== 'node_modules';
+          },
+        });
+      }
     } catch (error) {
       void vscode.window.showErrorMessage(`复制素材失败：${error instanceof Error ? error.message : String(error)}`);
       return;
@@ -320,6 +333,19 @@ export class AssetStore {
     const bindings = this.context.globalState.get<SoundBindings>(SOUND_KEY) ?? {};
     bindings[slot] = filePath;
     await this.context.globalState.update(SOUND_KEY, bindings);
+  }
+
+  /** 通过 webview 传来的 id 找回本地文件，避免解析 asWebviewUri 之后的 https 地址。 */
+  async resolveSoundPath(id: string): Promise<string | undefined> {
+    const separator = id.indexOf(':');
+    if (separator < 0) {
+      return undefined;
+    }
+    const source = id.slice(0, separator);
+    const name = path.basename(id.slice(separator + 1));
+    const dir = source === 'user' ? this.soundsDir.fsPath : this.builtinSoundsDir.fsPath;
+    const full = path.join(dir, name);
+    return (await exists(full)) ? full : undefined;
   }
 
   async unbindSound(slot: SoundSlot): Promise<void> {
@@ -384,6 +410,38 @@ async function findBundledSound(dir: string, slot: SoundSlot): Promise<string | 
     }
   }
   return undefined;
+}
+
+/** 导入前先估算目录体积，避免把整个「下载」目录复制进来。 */
+async function dirStats(dir: string): Promise<{ files: number; bytes: number }> {
+  let files = 0;
+  let bytes = 0;
+
+  const walk = async (current: string, depth: number): Promise<void> => {
+    if (depth > 4) {
+      return;
+    }
+    const entries = await safeReadDir(current);
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full, depth + 1);
+      } else if (entry.isFile()) {
+        files += 1;
+        try {
+          bytes += (await fs.stat(full)).size;
+        } catch {
+          // 忽略读不到的文件
+        }
+      }
+    }
+  };
+
+  await walk(dir, 0);
+  return { files, bytes };
 }
 
 async function findPrimaryModel(dir: string): Promise<string | undefined> {

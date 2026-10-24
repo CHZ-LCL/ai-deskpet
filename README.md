@@ -27,10 +27,11 @@
 | Git 提交信息 | 读 `git diff`，按 Conventional Commits 生成并一键填入提交框 |
 | 资料查询 | 直接抓取文档 URL；配置 Tavily / Serper 后可联网搜索并给出带引用的回答 |
 | 情绪与好感 | 点击、聊天、保存代码都会加好感，升级有专属台词 |
-| 主动提醒 | 文件里有报错时提醒并可直接触发修复；连续编码到阈值提醒休息 |
+| 主动提醒 | 文件里有报错、构建/测试任务失败时提醒，并可直接触发修复或讲解 |
 | 形象库 | 内置矢量形象 / 图片 / Live2D / 3D 一键切换，导入即用 |
 | 音效库 | 点击、开心、提醒、出错、切换形象五个场景分别绑定音效 |
 | 语音朗读 | 用系统 TTS 念回复，语速可调 |
+| 隐私 | 无遥测；对话只发给你配置的 AI 接口；历史与素材保存在本机 |
 
 ---
 
@@ -269,8 +270,9 @@ npm run package     # 类型检查 + 生产构建 + 生成 vsix
 发布到 VS Code Marketplace：
 
 1. 改 `package.json` 的 `name` / `publisher` / `displayName`（现在 publisher 是占位符 `your-publisher-id`）。
-2. 在 Azure DevOps 创建 Personal Access Token（Marketplace → Manage 权限）。
-3. 登录并发布：
+2. 把 `package.json` 里的 `repository` / `homepage` / `bugs` 和本 README 里的仓库地址换成你的。
+3. 在 Azure DevOps 创建 Personal Access Token（Marketplace → Manage 权限）。
+4. 登录并发布：
 
 ```bash
 npx vsce login <publisher>
@@ -295,6 +297,14 @@ git push -u origin main
 > 它们的许可不允许再分发。仓库里也不要放没有授权的角色素材。
 
 ---
+
+## 隐私
+
+- 插件**没有**任何遥测、统计或远程日志。
+- 对话内容只会发送到你自己配置的 AI 接口（Ollama 在本机；云端接口由你填写的 Key 决定）。
+- 只有在你主动点击「查文档」或输入 URL 时才会发起外部网页请求。
+- 对话历史、好感度、导入的素材都保存在本机的 VS Code globalStorage 里，命令面板里的
+  「重置桌宠」可以一次性清空。
 
 ## 已知限制
 

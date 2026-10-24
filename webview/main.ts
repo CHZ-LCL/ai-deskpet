@@ -241,13 +241,23 @@ function applySnapshot(snapshot: PetSnapshot): void {
   dom.namePlate.textContent = `${name} · ${MOOD_LABEL[snapshot.mood] ?? '发呆中'}`;
 }
 
+let lastActionSound = 0;
+
 function playAction(action: PetAction): void {
   engine.play(action);
+  // 连续保存/报错时不要把音效叠成噪音
+  const now = Date.now();
+  if (now - lastActionSound < 1200) {
+    return;
+  }
   if (action === 'happy' || action === 'wave') {
+    lastActionSound = now;
     audio.play('happy');
   } else if (action === 'alert') {
+    lastActionSound = now;
     audio.play('alert');
   } else if (action === 'shy') {
+    lastActionSound = now;
     audio.play('switch');
   }
 }

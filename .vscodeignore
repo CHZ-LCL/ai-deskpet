@@ -4,6 +4,7 @@ src/**
 webview/**
 shared/**
 dev/**
+docs/**
 node_modules/**
 esbuild.mjs
 tsconfig.json

@@ -25,7 +25,13 @@ export class PetViewProvider implements vscode.WebviewViewProvider {
 
     this.attachment?.dispose();
     this.attachment = undefined;
-    void this.host.attach(view.webview);
+    void this.host.attach(view.webview).then((disposable) => {
+      if (this.view === view) {
+        this.attachment = disposable;
+      } else {
+        disposable.dispose();
+      }
+    });
 
     view.onDidDispose(() => {
       this.host.detach(view.webview);

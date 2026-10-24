@@ -225,7 +225,20 @@ export class PetHost implements vscode.Disposable {
       );
 
       if (cts.token.isCancellationRequested) {
-        this.broadcast({ type: 'chatError', id, message: '已取消。' });
+        if (!acc.trim()) {
+          this.broadcast({ type: 'chatError', id, message: '已取消。' });
+          return '';
+        }
+        // 已经生成的内容保留下来，不要因为点了停止就丢掉
+        const partial: ChatMessage = {
+          id,
+          role: 'assistant',
+          content: `${acc}\n\n> 已停止生成`,
+          at: Date.now(),
+        };
+        this.history.push(partial);
+        await this.persistHistory();
+        this.broadcast({ type: 'chatEnd', id, text: acc, message: partial, speak: false });
         return acc;
       }
       if (!acc.trim()) {
@@ -311,7 +324,11 @@ export class PetHost implements vscode.Disposable {
         const sounds = await this.assets.listSounds(webview);
         const item = sounds.find((sound) => sound.id === message.id);
         if (item) {
-          const filePath = vscode.Uri.parse(item.uri).fsPath;
+          const filePath = await this.assets.resolveSoundPath(item.id);
+          if (!filePath) {
+            this.notice('音效文件找不到了，可能已被移动或删除。', 'warn');
+            break;
+          }
           await this.assets.bindSound(message.slot, filePath);
           await this.refreshAll();
           this.say('音效换好了，点我试试？', { action: 'happy' });
@@ -367,10 +384,13 @@ export class PetHost implements vscode.Disposable {
     this.history.push({ id: `${id}-u`, role: 'user', content: `📚 ${query}`, at: Date.now() });
 
     try {
-      const { sources } = await gatherSources(this.context, query, cts.token);
+      const { sources, searched } = await gatherSources(this.context, query, cts.token);
       if (cts.token.isCancellationRequested) {
         this.broadcast({ type: 'chatError', id, message: '已取消。' });
         return;
+      }
+      if (searched && !sources.length) {
+        this.broadcast({ type: 'notice', text: '没有搜到可用资料，先凭已有知识回答（可能不是最新版本）。', kind: 'warn' });
       }
       const languageId = vscode.window.activeTextEditor?.document.languageId ?? 'text';
       const request = sources.length
