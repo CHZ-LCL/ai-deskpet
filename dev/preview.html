@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<!-- 开发期预览页：不参与打包，用来在浏览器里检查 webview 的视觉与交互。
+     用法：npm run compile 后直接用浏览器打开本文件。 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>DeskPet 预览</title>
+  <link rel="stylesheet" href="../dist/webview/main.css" />
+  <style>
+    html, body { height: auto; margin: 0; }
+    body {
+      background: #14181a;
+      display: flex;
+      justify-content: center;
+      padding: 18px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    .device {
+      width: 380px;
+      height: 800px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid #2c3436;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      background: #1c211f;
+    }
+    .app { height: 100% !important; }
+    .device.plain { border: none; border-radius: 0; box-shadow: none; }
+    .device.light { background: #f6f8f7; border-color: #cfd8d4; }
+  </style>
+</head>
+<body>
+  <div class="device">
+    <div id="app" class="app">
+      <header class="toolbar" id="toolbar">
+        <div class="toolbar-left">
+          <span class="pet-name" id="pet-name">小豆</span>
+          <span class="level-chip" id="level-chip" title="好感等级">Lv.1</span>
+        </div>
+        <div class="toolbar-right">
+          <button class="icon-btn" id="btn-gallery" title="形象库">◍</button>
+          <button class="icon-btn" id="btn-sound" title="音效库">♪</button>
+          <button class="icon-btn" id="btn-settings" title="设置">⚙</button>
+          <button class="icon-btn" id="btn-open-panel" title="在编辑器标签中打开">⤢</button>
+        </div>
+      </header>
+
+      <main class="stage" id="stage">
+        <div class="stage-glow"></div>
+        <div class="pet-anchor" id="pet-anchor">
+          <div class="pet-block">
+            <div class="speech" id="speech" hidden>
+              <div class="speech-text" id="speech-text"></div>
+              <div class="speech-actions" id="speech-actions"></div>
+            </div>
+            <div class="pet-mount" id="pet-mount"></div>
+          </div>
+          <div class="name-plate" id="name-plate">小豆 · 发呆中</div>
+        </div>
+        <div class="busy-veil" id="busy-veil" hidden><span class="spinner"></span><span id="busy-label">思考中…</span></div>
+      </main>
+
+      <section class="chat" id="chat">
+        <div class="chat-log" id="chat-log" aria-live="polite"></div>
+        <div class="quick-actions" id="quick-actions">
+          <button data-quick="explain">讲解代码</button>
+          <button data-quick="fix">帮我修</button>
+          <button data-quick="tests">写测试</button>
+          <button data-quick="docs">查文档</button>
+          <button data-quick="clear" class="ghost">清空</button>
+        </div>
+        <form class="composer" id="composer">
+          <textarea id="input" rows="1" placeholder="和桌宠聊聊…（Enter 发送 / Shift+Enter 换行）"></textarea>
+          <button type="submit" class="send-btn" id="send-btn" title="发送">↑</button>
+        </form>
+        <div class="chat-foot">
+          <span id="model-chip" class="model-chip">未配置</span>
+          <button class="link-btn" id="btn-ai">AI 设置</button>
+        </div>
+      </section>
+
+      <div class="drawer" id="drawer" hidden>
+        <div class="drawer-head">
+          <strong id="drawer-title">形象库</strong>
+          <button class="icon-btn" id="drawer-close" title="关闭">✕</button>
+        </div>
+        <div class="drawer-body" id="drawer-body"></div>
+        <div class="drawer-foot" id="drawer-foot"></div>
+      </div>
+
+      <div class="toast" id="toast" hidden></div>
+    </div>
+  </div>
+
+  <script>
+    window.acquireVsCodeApi = () => ({
+      postMessage: (msg) => console.log('[postMessage]', msg),
+      getState: () => ({ greeted: true }),
+      setState: () => {},
+    });
+
+    const init = {
+      type: 'init',
+      config: {
+        name: '小豆',
+        renderer: 'builtin',
+        scale: 1,
+        volume: 0.6,
+        tts: false,
+        ttsRate: 1,
+        assets: { sounds: {} },
+        aiProviderLabel: 'Ollama · qwen2.5-coder:14b',
+        aiModel: 'qwen2.5-coder:14b',
+        rendererScripts: {},
+      },
+      snapshot: { affection: 236, level: 3, mood: 'happy', totalClicks: 12, totalChats: 8, daysTogether: 4 },
+      history: [
+        { id: 'h1', role: 'user', content: '这段 fetch 为什么一直不超时？', at: Date.now() },
+        {
+          id: 'h2',
+          role: 'assistant',
+          content:
+            '因为请求没带超时信号，网络卡住就会一直等下去。\n\n```ts\nawait fetch(url, {\n  signal: AbortSignal.timeout(5000),\n});\n```\n\n超过 5 秒会抛 `TimeoutError`，记得 `catch` 一下。',
+          at: Date.now(),
+        },
+      ],
+      assets: [
+        { id: 'builtin', name: '内置形象 · 小豆', kind: 'builtin', source: 'builtin', active: true },
+        { id: 'user:sherry', name: '雪莉', kind: 'live2d', source: 'user' },
+        { id: 'user:jenny', name: 'Jenny', kind: 'vrm', source: 'user' },
+      ],
+      sounds: [
+        { id: 'user:blip', name: 'blip', uri: '', source: 'user' },
+        { id: 'user:pop', name: 'pop', uri: '', source: 'user' },
+      ],
+      busy: false,
+    };
+
+    window.addEventListener('load', () => {
+      if (new URLSearchParams(location.search).has('empty')) {
+        init.history = [];
+      }
+      window.postMessage(init, '*');
+      setTimeout(() => {
+        window.postMessage(
+          {
+            type: 'say',
+            text: '这段代码我看过了，超时没加，网络一抖就会卡死。要我直接改吗？',
+            action: 'happy',
+            ttl: 0,
+            actions: [
+              { label: '帮我改', command: 'deskpet.fixSelection' },
+              { label: '先解释一下' },
+            ],
+          },
+          '*',
+        );
+      }, 400);
+    });
+    const params = new URLSearchParams(location.search);
+    if (params.has('embed')) {
+      document.body.style.padding = '0';
+      document.body.style.background = '#1c211f';
+      document.body.style.display = 'block';
+      document.body.style.width = params.has('panel') ? '860px' : '380px';
+      document.body.style.height = params.has('panel') ? '760px' : '800px';
+      document.querySelector('.device')?.classList.add('plain');
+    }
+    if (params.has('light')) {
+      document.documentElement.style.setProperty('--bg', '#f6f8f7');
+      document.documentElement.style.setProperty('--ink', '#16201d');
+      document.body.style.background = '#e4e9e7';
+      document.querySelector('.device')?.classList.add('light');
+    }
+    if (params.has('panel')) {
+      const device = document.querySelector('.device');
+      if (device) {
+        device.style.width = '860px';
+        device.style.height = '760px';
+      }
+    }
+  </script>
+  <script src="../dist/webview/main.js"></script>
+</body>
+</html>

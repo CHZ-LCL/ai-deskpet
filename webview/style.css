@@ -1,0 +1,1368 @@
+/* ------------------------------------------------------------------
+   AI 桌宠 · webview 样式
+   配色取自内置形象（薄荷绿），并用 VS Code 主题变量做兜底。
+------------------------------------------------------------------ */
+
+:root {
+  --accent: #4ec9b0;
+  --accent-deep: #2aa88f;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --warm: #ffb27a;
+  --ink: var(--vscode-foreground, #e8ece9);
+  --bg: var(--vscode-sideBar-background, #1c211f);
+  --bg-deep: color-mix(in srgb, var(--bg) 88%, #000);
+  --line: color-mix(in srgb, var(--ink) 13%, transparent);
+  --line-strong: color-mix(in srgb, var(--ink) 24%, transparent);
+  --muted: color-mix(in srgb, var(--ink) 58%, transparent);
+  --shadow: 0 10px 30px color-mix(in srgb, #000 28%, transparent);
+  --radius: 14px;
+  --font: var(--vscode-font-family, "Segoe UI", system-ui, sans-serif);
+  --mono: var(--vscode-editor-font-family, ui-monospace, "Cascadia Code", Consolas, monospace);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* 关键：类选择器里的 display 会覆盖浏览器默认的 [hidden]，这里统一兜住 */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 46% at 50% 6%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 72%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 96%, #fff), var(--bg));
+}
+
+.app::after {
+  /* 细微的网格纹理，避免大块纯色显得平 */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(70% 50% at 50% 30%, #000, transparent 75%);
+}
+
+/* ---------------------------------------------------------------- 工具栏 */
+
+.toolbar {
+  position: relative;
+  z-index: 6;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 4px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pet-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.level-chip {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: color-mix(in srgb, var(--accent) 82%, var(--ink));
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.icon-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.icon-btn:hover {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------- 舞台 */
+
+.stage {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 52%;
+  min-height: 148px;
+  overflow: hidden;
+}
+
+.stage-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  width: min(78%, 320px);
+  aspect-ratio: 1 / 0.42;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), transparent);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.pet-anchor {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 116px 10px 24px;
+}
+
+/* 给气泡预留固定高度，避免它盖住桌宠的头 */
+.pet-block {
+  position: relative;
+  width: min(84%, 292px);
+  max-height: 100%;
+  aspect-ratio: 1;
+  flex: 0 1 auto;
+}
+
+.pet-mount {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  filter: drop-shadow(0 12px 22px color-mix(in srgb, #04211c 26%, transparent));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pet-figure {
+  width: 100%;
+  height: 100%;
+  scale: var(--pet-scale, 1);
+  translate: 0 0;
+  rotate: 0deg;
+  transform-origin: center bottom;
+  transition: scale 0.28s cubic-bezier(0.2, 0.8, 0.3, 1), rotate 0.35s ease, translate 0.35s ease;
+  will-change: scale, rotate, translate;
+}
+
+.pet-svg,
+.pet-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.pet-canvas {
+  display: block;
+}
+
+.name-plate {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+/* 气泡 */
+
+.speech {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 2px);
+  transform: translateX(-50%);
+  z-index: 8;
+  width: min(106%, 304px);
+  padding: 9px 11px 10px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: color-mix(in srgb, var(--bg) 88%, var(--accent) 10%);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  animation: speech-in 0.22s ease;
+}
+
+.speech::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  background: inherit;
+  border-right: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.speech-text {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: break-word;
+  max-height: 66px;
+  overflow-y: auto;
+}
+
+.speech-text::-webkit-scrollbar {
+  width: 5px;
+}
+
+.speech-text::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+  border-radius: 4px;
+}
+
+.speech-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.speech-action {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: color-mix(in srgb, var(--accent) 85%, var(--ink));
+  font-size: 11px;
+}
+
+.speech-action:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+@keyframes speech-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(5px) scale(0.98);
+  }
+}
+
+.busy-veil {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-deep) 78%, transparent);
+  backdrop-filter: blur(10px);
+  color: var(--muted);
+  font-size: 11px;
+  box-shadow: var(--shadow);
+}
+
+.spinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------------------------------------------------------- 对话 */
+
+.chat {
+  position: relative;
+  z-index: 4;
+  flex: 1 1 48%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 96%, transparent), var(--bg));
+}
+
+.chat-log {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  scrollbar-width: thin;
+}
+
+.chat-log::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-log::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, color-mix(in srgb, var(--ink) 18%, transparent));
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.chat-log:empty::before {
+  content: "选中一段代码让我讲解，或者直接问我点什么。\A Ctrl+Alt+E 讲解 · Ctrl+Alt+P 聊天";
+  white-space: pre-line;
+  margin: auto;
+  padding: 10px;
+  text-align: center;
+  font-size: 11.4px;
+  line-height: 1.9;
+  color: var(--muted);
+  opacity: 0.78;
+}
+
+/* 对话较少时贴底显示，避免中间出现一大片空白 */
+.chat-log > :first-child {
+  margin-top: auto;
+}
+
+.msg {
+  max-width: 90%;
+  padding: 7px 10px;
+  border-radius: 13px;
+  line-height: 1.6;
+  font-size: 12.2px;
+  animation: msg-in 0.18s ease;
+  overflow-wrap: anywhere;
+}
+
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    translate: 0 3px;
+  }
+}
+
+.role-user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 92%, #fff), var(--accent-deep));
+  color: #062620;
+  border-bottom-right-radius: 4px;
+  white-space: pre-wrap;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.role-pet {
+  align-self: flex-start;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 4px;
+}
+
+.role-pet.is-error {
+  border-color: color-mix(in srgb, #ff8a80 45%, transparent);
+  background: color-mix(in srgb, #ff8a80 10%, transparent);
+}
+
+.msg-body > *:first-child {
+  margin-top: 0;
+}
+
+.msg-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.msg-body p {
+  margin: 0.45em 0;
+}
+
+.msg-body h3,
+.msg-body h4,
+.msg-body h5,
+.msg-body h6 {
+  margin: 0.7em 0 0.35em;
+  font-size: 12.8px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.msg-body ul,
+.msg-body ol {
+  margin: 0.5em 0;
+  padding-left: 1.3em;
+}
+
+.msg-body li {
+  margin: 0.22em 0;
+}
+
+.msg-body a {
+  color: color-mix(in srgb, var(--accent) 85%, var(--ink));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.msg-body blockquote {
+  margin: 0.5em 0;
+  padding: 2px 0 2px 9px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--muted);
+}
+
+.msg-body hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0.8em 0;
+}
+
+.msg-body code {
+  font-family: var(--mono);
+  font-size: 11.4px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: color-mix(in srgb, var(--accent) 45%, var(--ink));
+}
+
+.code-block {
+  margin: 7px 0;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  background: #10201c;
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 9px;
+  background: #0b1815;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #7fae9f;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.copy-btn {
+  border: none;
+  background: transparent;
+  color: #8fcbb8;
+  font-size: 10.5px;
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7fff1;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 9px 10px;
+  overflow: auto;
+  max-height: 330px;
+}
+
+.code-block pre::-webkit-scrollbar {
+  height: 7px;
+  width: 7px;
+}
+
+.code-block pre::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+}
+
+.code-block code {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.58;
+  color: #d6f2e9;
+  background: none;
+  padding: 0;
+  white-space: pre;
+}
+
+.chat-notice {
+  align-self: center;
+  max-width: 96%;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--muted);
+  font-size: 10.8px;
+  text-align: center;
+}
+
+.chat-notice a {
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+}
+
+.typing {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.typing i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  animation: typing 1.1s ease-in-out infinite;
+}
+
+.typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.pending {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.8;
+}
+
+.pending-label {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.err {
+  color: color-mix(in srgb, #ff9a8f 85%, var(--ink));
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ---------------------------------------------------------------- 快捷操作 */
+
+.quick-actions {
+  flex: none;
+  display: flex;
+  gap: 5px;
+  padding: 5px 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.quick-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-actions button {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--muted);
+  font-size: 10.6px;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.quick-actions button:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.quick-actions button.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: color-mix(in srgb, var(--accent) 90%, var(--ink));
+}
+
+.quick-actions button.ghost {
+  border-style: dashed;
+}
+
+/* ---------------------------------------------------------------- 输入框 */
+
+.composer {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 7px 12px 4px;
+}
+
+.composer.docs-mode textarea {
+  border-color: color-mix(in srgb, var(--warm) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--warm) 25%, transparent);
+}
+
+.composer textarea {
+  flex: 1 1 auto;
+  min-height: 34px;
+  max-height: 110px;
+  resize: none;
+  padding: 7px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  color: var(--ink);
+  font-size: 12.2px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.composer textarea::placeholder {
+  color: color-mix(in srgb, var(--ink) 38%, transparent);
+}
+
+.composer textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.send-btn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 11px;
+  background: linear-gradient(140deg, var(--accent), var(--accent-deep));
+  color: #062620;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.send-btn:hover {
+  transform: translateY(-1px);
+}
+
+.send-btn.is-stop {
+  background: color-mix(in srgb, #ff8a80 82%, var(--bg));
+  color: #2b0b08;
+  font-size: 11px;
+}
+
+.chat-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 12px 8px;
+}
+
+.model-chip {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 62%;
+}
+
+.link-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-size: 10.4px;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------- 抽屉 */
+
+.drawer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(14px);
+  animation: sheet-in 0.2s ease;
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+.drawer-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-head strong {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.drawer-foot {
+  flex: none;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.hint {
+  font-size: 10.4px;
+  color: var(--muted);
+}
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(94px, 1fr));
+  gap: 8px;
+}
+
+.asset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  text-align: left;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.asset-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  transform: translateY(-1px);
+}
+
+.asset-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.asset-thumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 9px;
+  overflow: hidden;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--ink) 5%, transparent));
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+  font-size: 26px;
+}
+
+.asset-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-name {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-kind {
+  font-size: 9.6px;
+  color: var(--muted);
+}
+
+.asset-card.import {
+  border-style: dashed;
+}
+
+.sound-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sound-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.sound-label {
+  font-size: 11.4px;
+  color: var(--ink);
+}
+
+.sound-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.sound-controls select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 70%, var(--ink) 6%);
+  color: var(--ink);
+  font-size: 11px;
+  outline: none;
+}
+
+.ghost-btn {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.ghost-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+}
+
+.primary-btn {
+  width: 100%;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: color-mix(in srgb, var(--accent) 85%, var(--ink));
+  font-size: 11.6px;
+  font-weight: 600;
+}
+
+.primary-btn:hover {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.ghost-btn.danger {
+  color: color-mix(in srgb, #ff8a80 85%, var(--ink));
+  border-color: color-mix(in srgb, #ff8a80 32%, transparent);
+}
+
+.setting {
+  padding: 9px 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.setting-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.8px;
+  margin-bottom: 6px;
+}
+
+.setting-head em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 10.6px;
+}
+
+.setting input[type="range"] {
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  outline: none;
+}
+
+.setting input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid color-mix(in srgb, var(--bg) 80%, #fff);
+  box-shadow: 0 1px 4px color-mix(in srgb, #000 30%, transparent);
+}
+
+.setting:has(.switch) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  flex: none;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+  transition: background 0.2s ease;
+}
+
+.switch span::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: translate 0.2s ease;
+}
+
+.switch input:checked + span {
+  background: color-mix(in srgb, var(--accent) 70%, var(--bg));
+}
+
+.switch input:checked + span::after {
+  translate: 16px 0;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 10px 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.setting-info div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.setting-info span {
+  color: var(--muted);
+}
+
+.setting-info strong {
+  font-weight: 500;
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------------- 提示 */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  translate: -50% 0;
+  z-index: 40;
+  max-width: 88%;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-deep) 92%, transparent);
+  color: var(--ink);
+  font-size: 11px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  animation: toast-in 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast.kind-error {
+  border-color: color-mix(in srgb, #ff8a80 45%, transparent);
+  color: color-mix(in srgb, #ffb3aa 90%, var(--ink));
+}
+
+.toast.kind-warn {
+  border-color: color-mix(in srgb, var(--warm) 45%, transparent);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: -50% 6px;
+  }
+}
+
+/* ---------------------------------------------------------------- 内置形象的动画 */
+
+.builtin-pet .pet-body {
+  animation: dp-breathe 4.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+@keyframes dp-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.012);
+  }
+}
+
+.builtin-pet .pet-shadow {
+  animation: dp-shadow 4.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes dp-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.16;
+  }
+  50% {
+    transform: scaleX(0.94);
+    opacity: 0.11;
+  }
+}
+
+.builtin-pet .pet-eye {
+  animation: dp-blink 5.8s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes dp-blink {
+  0%,
+  91%,
+  100% {
+    transform: scaleY(1);
+  }
+  93%,
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+
+.builtin-pet .pet-tail {
+  animation: dp-tail 3.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 12% 72%;
+}
+
+@keyframes dp-tail {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-8deg);
+  }
+}
+
+.builtin-pet .pet-antenna {
+  animation: dp-antenna 3s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+}
+
+@keyframes dp-antenna {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+.builtin-pet .pet-antenna-light {
+  animation: dp-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes dp-glow {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.builtin-pet .pet-zzz {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* 动作 */
+
+.pet-figure.is-happy {
+  animation: dp-jump 0.62s cubic-bezier(0.3, 0.9, 0.4, 1) 2;
+}
+
+@keyframes dp-jump {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  38% {
+    translate: 0 -11px;
+  }
+  68% {
+    translate: 0 1px;
+  }
+}
+
+.pet-figure.is-happy .pet-eye {
+  animation: none;
+  transform: scaleY(0.2);
+}
+
+.pet-figure.is-alert {
+  animation: dp-shake 0.5s ease-in-out 2;
+}
+
+@keyframes dp-shake {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -5px 0;
+  }
+  55% {
+    translate: 5px 0;
+  }
+  80% {
+    translate: -3px 0;
+  }
+}
+
+.pet-figure.is-think {
+  rotate: 4deg;
+}
+
+.pet-figure.is-shy {
+  rotate: -3.5deg;
+}
+
+.pet-figure.is-shy .pet-cheek {
+  opacity: 0.78;
+}
+
+.pet-figure.is-wave {
+  animation: dp-wave 1.1s ease-in-out infinite;
+}
+
+@keyframes dp-wave {
+  0%,
+  100% {
+    rotate: -2deg;
+  }
+  50% {
+    rotate: 2.5deg;
+  }
+}
+
+.pet-figure.is-sleep {
+  filter: saturate(0.7) brightness(0.94);
+  translate: 0 2px;
+}
+
+.pet-figure.is-sleep .pet-zzz {
+  opacity: 1;
+  animation: dp-zzz 2.6s ease-in-out infinite;
+}
+
+.pet-figure.is-sleep .pet-eye {
+  animation: none;
+  transform: scaleY(0.1);
+}
+
+@keyframes dp-zzz {
+  0% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  35% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    translate: 6px -12px;
+  }
+}
+
+/* ---------------------------------------------------------------- 响应式 */
+
+@media (min-width: 620px) {
+  .stage {
+    flex: 1 1 66%;
+  }
+
+  .chat {
+    flex: 1 1 34%;
+  }
+
+  .pet-anchor {
+    padding-top: 150px;
+  }
+
+  .pet-block {
+    width: min(56%, 400px);
+  }
+
+  .msg {
+    max-width: min(84%, 640px);
+  }
+
+  .chat-log {
+    padding-inline: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

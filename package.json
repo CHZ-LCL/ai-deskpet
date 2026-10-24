@@ -1,0 +1,350 @@
+{
+  "name": "ai-deskpet",
+  "displayName": "AI 桌宠 · DeskPet",
+  "description": "会陪你写代码的 AI 桌宠：对话、代码指导、查资料，支持 Live2D / 3D / 图片形象与自定义音效。",
+  "version": "0.1.0",
+  "publisher": "your-publisher-id",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "ai",
+    "pet",
+    "deskpet",
+    "live2d",
+    "vrm",
+    "ollama",
+    "chat",
+    "copilot"
+  ],
+  "main": "./dist/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-name/ai-deskpet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-name/ai-deskpet/issues"
+  },
+  "homepage": "https://github.com/your-name/ai-deskpet#readme",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "deskpet",
+          "title": "AI 桌宠",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "deskpet": [
+        {
+          "type": "webview",
+          "id": "deskpet.petView",
+          "name": "桌宠",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "deskpet.openPanel",
+        "title": "在编辑器标签中打开桌宠",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.focus",
+        "title": "聚焦桌宠面板",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.chat",
+        "title": "和桌宠聊天…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.explainSelection",
+        "title": "讲解选中代码",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.fixSelection",
+        "title": "诊断并修复选中代码",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.refactorSelection",
+        "title": "重构选中代码",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.addTests",
+        "title": "为选中代码生成测试",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.commitMessage",
+        "title": "生成 Git 提交信息",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.searchDocs",
+        "title": "查询资料 / 文档…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.importModel",
+        "title": "导入桌宠形象（Live2D / VRM / GLB / 图片）…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.importSound",
+        "title": "导入音效…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.setApiKey",
+        "title": "设置 AI 服务密钥…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.resetPet",
+        "title": "重置桌宠状态与好感度",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.openSettings",
+        "title": "打开桌宠设置",
+        "category": "AI 桌宠"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "deskpet.importModel",
+          "when": "view == deskpet.petView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deskpet.openPanel",
+          "when": "view == deskpet.petView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "deskpet.openSettings",
+          "when": "view == deskpet.petView",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "deskpet.explainSelection",
+          "when": "editorHasSelection",
+          "group": "deskpet@1"
+        },
+        {
+          "command": "deskpet.fixSelection",
+          "when": "editorHasSelection",
+          "group": "deskpet@2"
+        },
+        {
+          "command": "deskpet.addTests",
+          "when": "editorHasSelection",
+          "group": "deskpet@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "deskpet.focus",
+          "when": "view == deskpet.petView"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "deskpet.chat",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p"
+      },
+      {
+        "command": "deskpet.explainSelection",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "title": "AI 桌宠",
+      "properties": {
+        "deskpet.pet.name": {
+          "type": "string",
+          "default": "小豆",
+          "description": "桌宠的名字，会显示在对话气泡与提示中。"
+        },
+        "deskpet.pet.renderer": {
+          "type": "string",
+          "enum": [
+            "builtin",
+            "image",
+            "live2d",
+            "vrm"
+          ],
+          "enumDescriptions": [
+            "内置矢量形象（无需素材）",
+            "单张图片 / GIF",
+            "Live2D 模型（model3.json）",
+            "3D 模型（VRM / GLB）"
+          ],
+          "default": "builtin",
+          "description": "桌宠形象类型。"
+        },
+        "deskpet.pet.modelPath": {
+          "type": "string",
+          "default": "",
+          "description": "形象文件路径（绝对路径，或相对工作区根目录）。Live2D 请指向 .model3.json / .model.json。"
+        },
+        "deskpet.pet.cubismCorePath": {
+          "type": "string",
+          "default": "",
+          "description": "Live2D Cubism Core 文件（live2dcubismcore.min.js）路径。该文件由 Live2D 官方提供，插件不内置。"
+        },
+        "deskpet.pet.scale": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.3,
+          "maximum": 3,
+          "description": "形象缩放倍率。"
+        },
+        "deskpet.pet.volume": {
+          "type": "number",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "音效音量。"
+        },
+        "deskpet.pet.tts": {
+          "type": "boolean",
+          "default": false,
+          "description": "朗读桌宠的回复（使用系统语音合成）。"
+        },
+        "deskpet.pet.ttsRate": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 2,
+          "description": "朗读语速。"
+        },
+        "deskpet.pet.showOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "启动 VS Code 时自动展开桌宠侧边栏。"
+        },
+        "deskpet.pet.breakReminderMinutes": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "description": "连续编码多少分钟后提醒休息，0 表示关闭。"
+        },
+        "deskpet.pet.reactOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "保存文件时桌宠做出反应。"
+        },
+        "deskpet.pet.reactOnError": {
+          "type": "boolean",
+          "default": true,
+          "description": "代码出现错误时桌宠提醒你。"
+        },
+        "deskpet.ai.provider": {
+          "type": "string",
+          "enum": [
+            "ollama",
+            "openai",
+            "vscode-lm"
+          ],
+          "enumDescriptions": [
+            "本机 Ollama（OpenAI 兼容接口）",
+            "任意 OpenAI 兼容接口（OpenAI / DeepSeek / 通义千问 / vLLM 等）",
+            "VS Code 语言模型 API（复用 Copilot 订阅）"
+          ],
+          "default": "ollama",
+          "description": "AI 服务提供方。"
+        },
+        "deskpet.ai.baseUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434/v1",
+          "description": "OpenAI 兼容接口的 Base URL（需包含 /v1）。"
+        },
+        "deskpet.ai.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:14b",
+          "description": "模型名称。"
+        },
+        "deskpet.ai.temperature": {
+          "type": "number",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "采样温度。"
+        },
+        "deskpet.ai.maxTokens": {
+          "type": "number",
+          "default": 2048,
+          "minimum": 128,
+          "description": "单次回复的最大 token 数。"
+        },
+        "deskpet.ai.extraInstructions": {
+          "type": "string",
+          "default": "",
+          "description": "追加到系统提示词的人设/习惯设定。"
+        },
+        "deskpet.docs.searchProvider": {
+          "type": "string",
+          "enum": [
+            "none",
+            "tavily",
+            "serper"
+          ],
+          "enumDescriptions": [
+            "不联网搜索，仅直接抓取指定文档地址",
+            "使用 Tavily 搜索（需密钥）",
+            "使用 Serper.dev 搜索（需密钥）"
+          ],
+          "default": "none",
+          "description": "资料查询使用的联网搜索服务。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "tsc --noEmit -p .",
+    "preview": "node dev/serve.mjs",
+    "vsix": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies",
+    "package": "npm run typecheck && node esbuild.mjs --production && vsce package",
+    "vscode:prepublish": "node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@pixiv/three-vrm": "^3.1.6",
+    "@types/node": "^20.16.0",
+    "@types/three": "^0.170.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^2.32.0",
+    "esbuild": "^0.24.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "6.5.10",
+    "three": "^0.170.0",
+    "typescript": "^5.6.0"
+  }
+}
