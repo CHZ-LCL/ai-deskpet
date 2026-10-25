@@ -67,6 +67,7 @@ const dom = {
   sendBtn: el<HTMLButtonElement>('send-btn'),
   quick: el('quick-actions'),
   modelChip: el('model-chip'),
+  indexChip: el('index-chip'),
   drawer: el('drawer'),
   drawerTitle: el('drawer-title'),
   drawerBody: el('drawer-body'),
@@ -214,6 +215,9 @@ function applyConfig(config: PetConfig): void {
   dom.namePlate.textContent = `${config.name} · ${MOOD_LABEL[state.snapshot?.mood ?? 'idle']}`;
   dom.modelChip.textContent = config.aiProviderLabel;
   dom.modelChip.title = `模型：${config.aiModel}`;
+  dom.indexChip.textContent = config.contextLabel ?? '';
+  dom.indexChip.hidden = !config.contextLabel;
+  dom.indexChip.title = config.contextLabel ? `已索引项目：${config.contextLabel}` : '项目索引未建立';
   audio.configure(config.volume, config.assets);
 
   const rendererKey = [

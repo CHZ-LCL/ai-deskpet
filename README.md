@@ -22,6 +22,7 @@
 | 桌宠面板 | 侧边栏 + 编辑器标签两种形态，共用同一段对话与状态 |
 | 流式对话 | 边生成边显示，可随时中断；对话历史保存在本地 |
 | 代码讲解 | 选中代码 → 右键「讲解选中代码」，或用快捷键 `Ctrl+Alt+E` |
+| 项目级上下文 | 索引整个代码库，提问时自动带上相邻模块、接口定义与命名约定 |
 | 诊断修复 | 读取 VS Code 诊断信息，给出可直接替换的修复代码，支持 diff 预览 |
 | 重构 / 测试 | 按目标重构选区；为选区生成测试文件 |
 | Git 提交信息 | 读 `git diff`，按 Conventional Commits 生成并一键填入提交框 |
@@ -169,6 +170,37 @@ ollama pull qwen2.5-coder:14b
 
 ---
 
+## 项目级上下文（深度理解代码库）
+
+桌宠不只看当前选区。启动后它会在后台给你的整个工作区建一份轻量索引（默认上限 4000 个源码文件），
+提问或执行「讲解 / 修复 / 重构 / 写测试」时，会按下面的顺序自动拼装上下文：
+
+1. **项目约定**：语言分布、文件名风格（kebab / snake / camel）、缩进、引号、分号习惯、
+   测试文件命名、依赖线索（React / Vue / FastAPI / pytest…）。
+2. **当前文件结构**：LSP 提供的符号大纲（类、函数、接口，带行号）、它 import 了谁、又被谁 import。
+3. **相关定义**：光标所在符号的定义位置（通常是接口 / 类型 / 函数签名）会带一段上下文一起送进去，
+   这就是「接口约束」的来源。
+4. **跨文件检索**：对全库做 BM25 检索（标识符会按 camelCase / snake_case 拆词，中文按 2-gram），
+   命中块按「相邻模块 + 同目录 + 路径关键词」加权，当前文件本身降权，避免复读你选中的代码。
+
+所有环节都有字符预算（默认 8000 字符），超出按优先级截断。上下文窗口小的模型可以把
+`deskpet.context.maxChars` 调到 4000~6000。
+
+**为什么不用向量库**：BM25 + 依赖图 + LSP 符号在代码场景里已经能命中大部分「这个函数在哪、谁调用了它、
+接口长什么样」的问题，而且零依赖、零上传、毫秒级。语义检索（本地 embedding）是后续可选项。
+
+**索引的边界**：
+
+- 只在内存里，重启 VS Code 会重建；保存文件时增量更新。
+- 跳过 `node_modules`、`dist`、`build`、`.venv`、`target`、压缩产物和 220KB 以上的文件。
+- 不索引图片、二进制和超长单行文件。
+- 索引完全在本地完成，不会有任何内容被上传；只有你发起的对话才会把拼装好的上下文发给你配置的 AI 接口。
+
+状态栏右下角会显示 `$(database) 1234 文件 · 5678 块`，点击可重建索引；
+面板底部也有一个小小的索引状态徽标。
+
+---
+
 ## 设置项
 
 | 设置 | 默认值 | 说明 |
@@ -192,6 +224,9 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.ai.maxTokens` | `2048` | 单次回复上限 |
 | `deskpet.ai.extraInstructions` | 空 | 附加人设 |
 | `deskpet.docs.searchProvider` | `none` | `none` / `tavily` / `serper` |
+| `deskpet.context.enabled` | `true` | 是否启用项目级上下文索引 |
+| `deskpet.context.maxFiles` | `4000` | 索引文件数上限 |
+| `deskpet.context.maxChars` | `8000` | 每次提问附带的上下文预算 |
 
 ---
 
@@ -206,6 +241,7 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.addTests` | — | 为选区生成测试文件 |
 | `deskpet.commitMessage` | — | 根据 git diff 生成提交信息 |
 | `deskpet.searchDocs` | — | 查资料 / 抓取文档 URL |
+| `deskpet.reindex` | — | 重建项目索引（也会在状态栏显示进度） |
 | `deskpet.importModel` | — | 导入形象 |
 | `deskpet.importSound` | — | 导入音效 |
 | `deskpet.openPanel` | — | 在编辑器标签中打开桌宠 |
@@ -222,6 +258,7 @@ ai-deskpet/
 │  ├─ extension.ts          激活、命令注册、事件反应、久坐提醒
 │  ├─ config.ts             把设置 + 素材路径组装成 PetConfig
 │  ├─ ai/                   Ollama / OpenAI 兼容 / VS Code LM 适配器、上下文采集、提示词
+│  ├─ context/              项目索引（BM25）、依赖图、代码约定提取、LSP 符号解析
 │  ├─ docs/search.ts        资料检索（直连 URL / Tavily / Serper）
 │  ├─ commands/assist.ts    代码讲解、修复、重构、测试、提交信息
 │  └─ pet/                  宿主侧：状态、素材库、webview 消息总线
@@ -236,6 +273,8 @@ ai-deskpet/
 几个关键设计：
 
 - **一个 `PetHost` 管所有 webview**：侧边栏和编辑器标签同时打开时共享对话、好感度和素材，消息会广播到所有存活的面板。
+- **项目上下文单独一层**：`ProjectContext` 只负责“把仓库变成可检索的上下文”，不依赖 AI 适配器；
+  检索结果是纯文本块，换任何模型都能用，也方便以后加 embedding 重排。
 - **流式协议**：`send → chatStart → chatDelta* → chatEnd`，出错走 `chatError`，支持 `abort`。HTTP 侧的 SSE 解析在宿主进程完成，webview 只负责渲染。
 - **按需加载渲染器**：Live2D 与 3D 各自是一个独立 bundle（esbuild 第二个入口），只有切到对应形象时才注入 `<script>`，首屏只有 40KB 左右。
 - **安全边界**：webview 全程 CSP + nonce；Markdown 先转义再渲染，链接只允许 `http(s)`，外部链接交给 `vscode.env.openExternal`；API Key 存 SecretStorage。
@@ -320,6 +359,7 @@ git push -u origin main
 - [ ] 可选的置顶悬浮窗伴侣（Electron / Tauri，通过本地 WebSocket 与插件通信）
 - [ ] 语音输入（Whisper / 系统听写）
 - [ ] 形象包市场：一键安装 Live2D / VRM 主题
+- [ ] 项目索引升级：本地 embedding 语义检索 + 跨文件调用链分析
 - [ ] 多语言界面（English / 日本語）
 - [ ] 单元测试与 webview E2E（Playwright）
 - [ ] 对话内直接执行「应用 diff / 新建文件」的事务式确认

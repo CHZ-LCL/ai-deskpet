@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { API_KEY_SECRET } from './ai';
 import { diffContentProvider, focusPet, registerAssistCommands } from './commands/assist';
+import { ProjectContext } from './context/project';
 import { DOCS_KEY_SECRET } from './docs/search';
 import { AssetStore } from './pet/assets';
 import { PetHost } from './pet/host';
@@ -12,16 +13,22 @@ import { CMD, DIFF_SCHEME, VIEW_ID } from '../shared/protocol';
 export function activate(context: vscode.ExtensionContext): void {
   const assets = new AssetStore(context);
   const state = new PetState(context);
-  const host = new PetHost(context, assets, state);
+  const project = new ProjectContext(context);
+  const host = new PetHost(context, assets, state, project);
   const viewProvider = new PetViewProvider(context, host);
 
   context.subscriptions.push(
     host,
+    project,
     vscode.window.registerWebviewViewProvider(PetViewProvider.viewType, viewProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
     vscode.workspace.registerTextDocumentContentProvider(DIFF_SCHEME, diffContentProvider),
   );
+
+  project.onDidFinish = () => {
+    void host.refreshAll();
+  };
 
   const register = (id: string, handler: (...args: unknown[]) => unknown) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, handler));
@@ -43,6 +50,10 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   register(CMD.setApiKey, () => setApiKey(context, host));
   register(CMD.resetPet, () => resetPet(host, state));
+  register(CMD.reindex, async () => {
+    await project.rebuild();
+    host.notice(`项目索引完成：${project.label}`, 'info');
+  });
   register(CMD.openSettings, () => vscode.commands.executeCommand('workbench.action.openSettings', 'deskpet'));
 
   // 供 webview 使用的内部命令（不注册到命令面板）
@@ -67,9 +78,17 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(...registerAssistCommands(host));
 
-  registerReactions(context, host);
+  registerReactions(context, host, project);
   registerStartup(context);
   registerFirstRun(context);
+
+  // 后台建索引，别和激活流程抢时间
+  const indexTimer = setTimeout(() => {
+    if (vscode.workspace.getConfiguration('deskpet').get<boolean>('context.enabled', true)) {
+      void project.ensureBuilt();
+    }
+  }, 2500);
+  context.subscriptions.push(new vscode.Disposable(() => clearTimeout(indexTimer)));
 
   // 任一设置变更都重新推送配置（形象、音效、TTS 等都靠这条链路生效）
   let refreshTimer: NodeJS.Timeout | undefined;
@@ -77,6 +96,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (!event.affectsConfiguration('deskpet')) {
         return;
+      }
+      if (event.affectsConfiguration('deskpet.context')) {
+        void project.rebuild();
       }
       if (refreshTimer) {
         clearTimeout(refreshTimer);
@@ -157,7 +179,7 @@ async function resetPet(host: PetHost, state: PetState): Promise<void> {
   host.say('我们重新认识一下吧，我是你的编程搭子。', { action: 'shy' });
 }
 
-function registerReactions(context: vscode.ExtensionContext, host: PetHost): void {
+function registerReactions(context: vscode.ExtensionContext, host: PetHost, project: ProjectContext): void {
   const config = () => vscode.workspace.getConfiguration('deskpet');
 
   // 久坐提醒：按“连续编码时长”计时，中途休息会自动重新开始
@@ -175,6 +197,9 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost): voi
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
       markActive();
+      if (document.uri.scheme === 'file') {
+        void project.updateFile(document.uri);
+      }
       if (!config().get<boolean>('pet.reactOnSave', true) || document.uri.scheme !== 'file') {
         return;
       }
@@ -194,6 +219,7 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost): voi
   );
 
   let diagnosticsTimer: NodeJS.Timeout | undefined;
+  let deleteTimer: NodeJS.Timeout | undefined;
   const lastHint = new Map<string, number>();
   context.subscriptions.push(
     vscode.languages.onDidChangeDiagnostics((event) => {
@@ -236,8 +262,7 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost): voi
   );
 
   context.subscriptions.push(
-    vscode.tasks.onDidEndTaskProcess((event) => {
-      if (event.exitCode === undefined || event.exitCode === 0) {
+    vscode.tasks.onDidEndTaskProcess((event) => {      if (event.exitCode === undefined || event.exitCode === 0) {
         return;
       }
       const name = event.execution.task.name;
@@ -250,6 +275,16 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost): voi
         ttl: 12_000,
         actions: [{ label: '讲解当前文件', command: CMD.explain }],
       });
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidDeleteFiles(() => {
+      // 删除会让依赖图失效，延迟重建一次即可
+      if (deleteTimer) {
+        clearTimeout(deleteTimer);
+      }
+      deleteTimer = setTimeout(() => void project.rebuild(), 4000);
     }),
   );
 

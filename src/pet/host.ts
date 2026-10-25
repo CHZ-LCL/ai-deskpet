@@ -14,6 +14,7 @@ import { collectEditorSnippet, formatSnippet, workspaceSummary } from '../ai/con
 import { buildSystemPrompt, docsNoSourcePrompt, docsPrompt } from '../ai/prompts';
 import type { ChatTurn } from '../ai/types';
 import { buildPetConfig } from '../config';
+import type { ProjectContext } from '../context/project';
 import { gatherSources } from '../docs/search';
 import { truncate } from '../util';
 import type { AssetStore } from './assets';
@@ -21,7 +22,8 @@ import type { PetState } from './state';
 
 const HISTORY_KEY = 'deskpet.history.v1';
 const MAX_HISTORY = 80;
-const MAX_TURNS = 14;
+const MAX_TURNS = 8;
+const TURN_CHARS = 2500;
 
 const CLICK_LINES = [
   '在的！要我帮你看点什么？',
@@ -47,6 +49,8 @@ export interface TurnOptions {
   request: string;
   speak?: boolean;
   action?: PetAction;
+  /** 是否把项目级上下文（索引检索 + 符号定义）拼进请求 */
+  useProjectContext?: boolean;
 }
 
 /**
@@ -66,6 +70,7 @@ export class PetHost implements vscode.Disposable {
     private readonly context: vscode.ExtensionContext,
     private readonly assets: AssetStore,
     private readonly state: PetState,
+    private readonly project: ProjectContext,
   ) {
     this.history = this.context.globalState.get<ChatMessage[]>(HISTORY_KEY) ?? [];
   }
@@ -142,7 +147,7 @@ export class PetHost implements vscode.Disposable {
   async refreshAll(): Promise<void> {
     for (const webview of this.webviews) {
       try {
-        const config = await buildPetConfig(this.context, webview, this.assets);
+        const config = await buildPetConfig(this.context, webview, this.assets, this.project.label);
         const [items, sounds] = await Promise.all([
           this.assets.listAssets(webview),
           this.assets.listSounds(webview),
@@ -158,7 +163,12 @@ export class PetHost implements vscode.Disposable {
 
   /** 命令行/快捷按钮触发的问答：仍然走统一的流式通道。 */
   async prompt(userText: string, request: string, options: Omit<TurnOptions, 'userText' | 'request'> = {}): Promise<string> {
-    return this.runTurn({ ...options, userText, request });
+    return this.runTurn({
+      ...options,
+      userText,
+      request,
+      useProjectContext: options.useProjectContext ?? true,
+    });
   }
 
   /** 命令行触发的资料查询。 */
@@ -211,9 +221,18 @@ export class PetHost implements vscode.Disposable {
 
       const turns: ChatTurn[] = [{ role: 'system', content: system }];
       for (const message of priorHistory.slice(-MAX_TURNS)) {
-        turns.push({ role: message.role, content: truncate(message.content, 4000) });
+        turns.push({ role: message.role, content: truncate(message.content, TURN_CHARS) });
       }
-      turns.push({ role: 'user', content: options.request });
+
+      // 项目级上下文：索引检索 + 依赖邻居 + 符号定义，按预算拼装
+      let request = options.request;
+      if (options.useProjectContext) {
+        const projectBlock = await this.collectProjectContext(options.request, id);
+        if (projectBlock) {
+          request = `${options.request}\n\n[项目上下文 · 本地索引自动检索，可能不完整]\n${projectBlock}`;
+        }
+      }
+      turns.push({ role: 'user', content: request });
 
       acc = await provider.chat(
         turns,
@@ -288,8 +307,43 @@ export class PetHost implements vscode.Disposable {
     }
   }
 
-  // ---------------------------------------------------------------- 消息处理
+  /**
+   * 组装项目上下文；索引尚未建好时短暂等待，超时就先不附带，绝不阻塞对话。
+   */
+  private async collectProjectContext(query: string, id: string): Promise<string> {
+    const config = vscode.workspace.getConfiguration('deskpet');
+    if (!config.get<boolean>('context.enabled', true)) {
+      return '';
+    }
 
+    if (!this.project.ready) {
+      this.busyLabel = '建立项目索引…';
+      this.broadcast({ type: 'busy', busy: true, label: this.busyLabel });
+    }
+
+    try {
+      const timeout = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 15_000));
+      const bundle = await Promise.race([
+        this.project.buildBundle({
+          query,
+          activeUri: vscode.window.activeTextEditor?.document.uri,
+          maxChars: config.get<number>('context.maxChars', 8000),
+          includeDefinitions: true,
+        }),
+        timeout,
+      ]);
+      return bundle ?? '';
+    } catch {
+      return '';
+    } finally {
+      if (this.busy) {
+        this.busyLabel = '思考中…';
+        this.broadcast({ type: 'busy', busy: true, label: this.busyLabel });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- 消息处理
   private async handle(webview: vscode.Webview, message: WebviewMessage): Promise<void> {
     switch (message.type) {
       case 'ready':
@@ -368,7 +422,7 @@ export class PetHost implements vscode.Disposable {
       ? `${trimmed}\n\n[当前编辑器上下文]\n${formatSnippet(snippet)}`
       : trimmed;
 
-    await this.runTurn({ id, userText: trimmed, request });
+    await this.runTurn({ id, userText: trimmed, request, useProjectContext: Boolean(includeCode) });
   }
 
   private async runDocs(id: string, query: string): Promise<void> {
@@ -398,7 +452,7 @@ export class PetHost implements vscode.Disposable {
         : docsNoSourcePrompt(query, languageId);
 
       this.busy = false;
-      const answer = await this.runTurn({ id, request, speak: false });
+      const answer = await this.runTurn({ id, request, speak: false, useProjectContext: false });
       if (answer && sources.length) {
         const links = sources.map((source, index) => `[资料 ${index + 1}](${source.url})`).join(' · ');
         this.broadcast({ type: 'notice', text: `参考：${links}` });
@@ -429,7 +483,7 @@ export class PetHost implements vscode.Disposable {
   }
 
   private async sendInit(webview: vscode.Webview): Promise<void> {
-    const config: PetConfig = await buildPetConfig(this.context, webview, this.assets);
+    const config: PetConfig = await buildPetConfig(this.context, webview, this.assets, this.project.label);
     const [items, sounds] = await Promise.all([
       this.assets.listAssets(webview),
       this.assets.listSounds(webview),

@@ -34,6 +34,8 @@ export interface PetConfig {
   assets: PetAssets;
   aiProviderLabel: string;
   aiModel: string;
+  /** 项目索引状态文案，例如「1234 文件 · 5678 块」 */
+  contextLabel?: string;
   /** 按需加载的渲染器脚本地址（webview 资源 url） */
   rendererScripts: { live2d?: string; vrm?: string };
 }
@@ -133,6 +135,7 @@ export const CMD = {
   setApiKey: 'deskpet.setApiKey',
   resetPet: 'deskpet.resetPet',
   openSettings: 'deskpet.openSettings',
+  reindex: 'deskpet.reindex',
 } as const;
 
 export const VIEW_ID = 'deskpet.petView';

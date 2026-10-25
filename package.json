@@ -123,6 +123,11 @@
         "category": "AI 桌宠"
       },
       {
+        "command": "deskpet.reindex",
+        "title": "重建项目索引",
+        "category": "AI 桌宠"
+      },
+      {
         "command": "deskpet.openSettings",
         "title": "打开桌宠设置",
         "category": "AI 桌宠"
@@ -322,6 +327,25 @@
           ],
           "default": "none",
           "description": "资料查询使用的联网搜索服务。"
+        },
+        "deskpet.context.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用项目级上下文：索引整个代码库，提问时自动关联相邻模块、接口定义与命名约定。"
+        },
+        "deskpet.context.maxFiles": {
+          "type": "number",
+          "default": 4000,
+          "minimum": 100,
+          "maximum": 20000,
+          "description": "建立索引时最多读取的文件数（按 VS Code 搜索排序）。大型仓库可适当调大。"
+        },
+        "deskpet.context.maxChars": {
+          "type": "number",
+          "default": 8000,
+          "minimum": 1000,
+          "maximum": 30000,
+          "description": "每次提问附带的项目上下文最大字符数。上下文窗口小的模型建议调低到 4000~6000。"
         }
       }
     }

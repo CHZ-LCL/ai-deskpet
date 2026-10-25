@@ -758,7 +758,28 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 62%;
+  max-width: 42%;
+}
+
+.index-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 9.6px;
+  line-height: 15px;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  white-space: nowrap;
+}
+
+.index-chip::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 75%, transparent);
 }
 
 .link-btn {

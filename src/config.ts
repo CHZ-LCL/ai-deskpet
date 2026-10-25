@@ -7,6 +7,7 @@ export async function buildPetConfig(
   context: vscode.ExtensionContext,
   webview: vscode.Webview,
   assets: AssetStore,
+  contextLabel?: string,
 ): Promise<PetConfig> {
   const config = vscode.workspace.getConfiguration('deskpet');
   const ai = await readAiSettings(context);
@@ -20,6 +21,7 @@ export async function buildPetConfig(
     assets: await assets.buildAssets(webview),
     aiProviderLabel: providerLabel(ai),
     aiModel: ai.model,
+    contextLabel,
     rendererScripts: {
       live2d: webview
         .asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview', 'renderer-live2d.js'))
