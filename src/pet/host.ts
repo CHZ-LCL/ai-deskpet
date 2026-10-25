@@ -193,6 +193,11 @@ export class PetHost implements vscode.Disposable {
     });
   }
 
+  /** 依赖当前文件的文件（修改后验证用）。 */
+  dependentsOf(uri: vscode.Uri): vscode.Uri[] {
+    return this.project.dependentsOf(uri);
+  }
+
   setAdviceHandler(handler: (id: string, action: AdviceAction) => Promise<void>): void {
     this.adviceHandler = handler;
   }

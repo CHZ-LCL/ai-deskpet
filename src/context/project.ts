@@ -85,6 +85,23 @@ export class ProjectContext implements vscode.Disposable {
     return { ...this.styleHints };
   }
 
+  /** 依赖当前文件的文件（用于修改后验证依赖有没有被改坏）。 */
+  dependentsOf(uri: vscode.Uri): vscode.Uri[] {
+    if (
+      this.status !== 'ready' ||
+      !vscode.workspace.getConfiguration('deskpet').get<boolean>('verify.dependents', true)
+    ) {
+      return [];
+    }
+    const rel = vscode.workspace.asRelativePath(uri, false);
+    const dependents = [...(this.importedBy.get(rel) ?? [])].slice(0, 4);
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    if (!folder || !dependents.length) {
+      return [];
+    }
+    return dependents.map((item) => vscode.Uri.joinPath(folder.uri, item));
+  }
+
   get label(): string {
     if (this.status === 'building') {
       return '索引构建中';

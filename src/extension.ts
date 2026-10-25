@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { API_KEY_SECRET } from './ai';
-import { bindAdviceActions, diffContentProvider, focusPet, registerAssistCommands } from './commands/assist';
+import { bindAdviceActions, focusPet, registerAssistCommands } from './commands/assist';
+import { diffContentProvider } from './commands/diff';
 import { registerDocCommands } from './commands/docs';
 import { registerTestCommands } from './commands/tests';
 import { registerThemeCommands } from './commands/theme';

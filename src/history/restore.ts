@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { showProposedDiff } from '../commands/assist';
+import { showProposedDiff } from '../commands/diff';
 import type { FixHistory } from './fixHistory';
 
 /** 把文件恢复成这条历史记录里的 before 版本。 */

@@ -518,6 +518,16 @@
           "maximum": 20,
           "description": "「一键修复当前文件的错误」最多处理的错误数量。"
         },
+        "deskpet.verify.afterEdit": {
+          "type": "boolean",
+          "default": true,
+          "description": "应用 AI 修改后，等待语言服务稳定并对比诊断，发现新错误时提示回退或再修。"
+        },
+        "deskpet.verify.dependents": {
+          "type": "boolean",
+          "default": true,
+          "description": "修改后验证时，同时检查依赖当前文件的文件（最多 4 个）。"
+        },
         "deskpet.debug.watchTerminal": {
           "type": "boolean",
           "default": true,

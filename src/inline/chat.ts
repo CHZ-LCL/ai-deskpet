@@ -3,10 +3,11 @@ import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import { parseAdvice } from '../ai/advice';
 import { checkStyle, inferStyleProfile } from '../standards/profile';
-import { showProposedDiff } from '../commands/assist';
+import { showProposedDiff } from '../commands/diff';
 import { enclosingRange } from '../commands/debug';
 import type { PetHost } from '../pet/host';
 import { getFixHistory } from '../history/fixHistory';
+import { baselineFor, verifyAfterEdit } from '../verify/verify';
 import { isPatchStale } from './patch';
 
 interface InlinePatch {
@@ -38,7 +39,7 @@ export function registerInlineChat(context: vscode.ExtensionContext, host: PetHo
 
   context.subscriptions.push(
     vscode.commands.registerCommand(CMD.inlineChat, (args?: InlineArgs) => runInlineChat(host, controller, args)),
-    vscode.commands.registerCommand(CMD.inlineApply, (args?: { id?: string }) => applyInline(args?.id)),
+    vscode.commands.registerCommand(CMD.inlineApply, (args?: { id?: string }) => applyInline(args?.id, host)),
     vscode.commands.registerCommand(CMD.inlineDiff, (args?: { id?: string }) => diffInline(args?.id)),
   );
 }
@@ -218,7 +219,7 @@ function looksLikeMutation(question: string, reply: string): boolean {
   return /【问题】|【原因】|【方案】/.test(reply);
 }
 
-async function applyInline(id?: string): Promise<void> {
+async function applyInline(id?: string, host?: PetHost): Promise<void> {
   const item = id ? pending.get(id) : undefined;
   if (!item) {
     vscode.window.showWarningMessage('这条建议已经失效，请重新生成。');
@@ -232,6 +233,7 @@ async function applyInline(id?: string): Promise<void> {
   }
 
   const beforeText = document.getText();
+  const baseline = host ? baselineFor(document, host.dependentsOf(document.uri)) : undefined;
   const edit = new vscode.WorkspaceEdit();
   edit.replace(item.uri, item.range, item.code);
   if (!(await vscode.workspace.applyEdit(edit))) {
@@ -239,7 +241,7 @@ async function applyInline(id?: string): Promise<void> {
     return;
   }
   const afterText = document.getText();
-  await getFixHistory()?.add(item.uri, beforeText, afterText, '行内修改');
+  const meta = await getFixHistory()?.add(item.uri, beforeText, afterText, '行内修改');
   try {
     await document.save();
   } catch {
@@ -247,6 +249,9 @@ async function applyInline(id?: string): Promise<void> {
   }
   pending.delete(id!);
   vscode.window.setStatusBarMessage('已应用桌宠的修改', 4000);
+  if (host && baseline) {
+    void verifyAfterEdit(host, document, baseline, meta);
+  }
 }
 
 async function diffInline(id?: string): Promise<void> {

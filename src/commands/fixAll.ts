@@ -6,6 +6,7 @@ import { getFixHistory } from '../history/fixHistory';
 import { restoreFix, showFixDiff } from '../history/restore';
 import { isFullFileRewrite } from '../history/util';
 import type { PetHost } from '../pet/host';
+import { baselineFor, verifyAfterEdit } from '../verify/verify';
 import { focusPet, presentPatch, snippetFromRange } from './assist';
 import { enclosingRange } from './debug';
 
@@ -42,6 +43,9 @@ async function fixAll(host: PetHost): Promise<void> {
     host.say('文件有点大，整文件重写风险太高。建议用问题清单逐条修复。', { action: 'think' });
     return;
   }
+
+  // 记录修改前的错误基线（当前文件 + 依赖它的文件）
+  const baseline = baselineFor(document, host.dependentsOf(document.uri));
 
   await focusPet();
   const relative = vscode.workspace.asRelativePath(document.uri, false);
@@ -97,9 +101,15 @@ async function fixAll(host: PetHost): Promise<void> {
 
   host.say(`修好了 ${diagnostics.length} 处，检查一下有没有新问题。`, { action: 'happy' });
 
+  const diff = await verifyAfterEdit(host, document, baseline, meta);
+  if (diff.introduced.length) {
+    // verifyAfterEdit 已经弹过「回退 / 再修一次」，这里不再重复提示
+    return;
+  }
+
   const actions = meta ? ['撤销', '查看差异'] : [];
   const choice = await vscode.window.showInformationMessage(
-    `已一键修复 ${diagnostics.length} 处错误`,
+    `已一键修复 ${diagnostics.length} 处错误，验证通过`,
     ...actions,
   );
 

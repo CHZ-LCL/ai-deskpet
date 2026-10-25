@@ -32,6 +32,7 @@
 | 克制提醒 | 安静 / 平衡 / 话多三档，打字时自动静默，未读提醒用小角标而不弹窗 |
 | 决策透明 | 修复/重构先给「问题·原因·方案·影响」卡片，再让你决定是否应用 |
 | 智能检修 | 实时诊断角标、终端失败捕获、堆栈解析，解释 + 补丁 + 自动 diff |
+| 修改后验证 | 应用补丁后对比诊断，检查当前文件与依赖文件是否被改坏，可一键回退 |
 | 测试生成 | 识别测试框架，先列分支再写用例，覆盖空值/边界/异常路径 |
 | 文档同步 | 生成/扩写 JSDoc、Go doc、docstring；保存时检测参数漂移 |
 | 个性化 | 主题色板/自定义主色、背景·动效·排版、快捷按钮、自定义 CSS、人设语气 |
@@ -301,6 +302,23 @@ ollama pull qwen2.5-coder:14b
 
 > 终端捕获依赖 VS Code 1.93 的 Shell Integration；如果你的终端没有启用 shell integration，
 > 这个入口会自动跳过，其它入口不受影响。
+
+### 修改后自动验证
+
+小改动最容易炸的是别处：导出改名、参数增删、变量作用域。所以每次应用补丁后
+（变更卡片、行内对话、一键修复）都会跑一次验证：
+
+1. 等语言服务稳定（最多 8 秒；连续 700ms 没有变化就认为跑完）；
+2. 对比修改前后的**错误**集合，范围是「当前文件 + 依赖它的最多 4 个文件」（来自项目索引的 import 图）；
+3. 没有新错误 → 状态栏显示 `✓ 桌宠已验证`，不弹窗；
+4. 有新错误 → 按 **模块/名称解析、类型不匹配、变量/未使用** 分组，列出前 4 条（`文件:行`），并弹出：
+   - **回退这次修改**（走修改历史，一键恢复）
+   - **再修一次**（拿新错误重新跑一键修复）
+   - 忽略
+
+这样“改一行、崩一片”的情况会在同一秒被发现，而不是等你跑构建。
+
+开关：`deskpet.verify.afterEdit`、`deskpet.verify.dependents`。
 
 ---
 
@@ -574,6 +592,8 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.context.maxChars` | `8000` | 每次提问附带的上下文预算 |
 | `deskpet.fix.autoDiff` | `true` | 从报错生成修复时自动打开并排 diff |
 | `deskpet.fix.maxAutoDiagnostics` | `6` | 一键修复最多处理的错误数 |
+| `deskpet.verify.afterEdit` | `true` | 应用修改后自动对比诊断，发现新错误时提示 |
+| `deskpet.verify.dependents` | `true` | 验证时同时检查依赖文件（最多 4 个） |
 | `deskpet.debug.watchTerminal` | `true` | 捕获终端失败输出（需 VS Code 1.93+） |
 | `deskpet.standards.packs` | `js-modern,security,consistency` | 启用的规则包 |
 | `deskpet.standards.custom` | `[]` | 团队自定义规则（写进提示词） |
@@ -682,7 +702,7 @@ npm run preview     # 起一个静态服务，看 dev/preview.html
 可以在浏览器里快速调样式，不用每次重载 VS Code。改完 `webview/` 后需要先 `npm run compile`。
 
 ```bash
-npm test               # 单元测试（45 个）
+npm test               # 单元测试（51 个）
 npm run test:integration  # 真实 VS Code 集成测试（首次会下载 VS Code）
 npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 ```
@@ -697,7 +717,7 @@ npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 
 | 命令 | 内容 | 依赖 |
 | --- | --- | --- |
-| `npm test` | 45 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
+| `npm test` | 51 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
 | `npm run test:integration` | 4 个集成测试 | 下载 stable VS Code，真实激活扩展 |
 | `npm run test:visual` | 暗色 / 亮色截图对比 | headless Chrome + pngjs |
 

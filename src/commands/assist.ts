@@ -3,7 +3,7 @@ import * as crypto from 'node:crypto';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 import * as vscode from 'vscode';
-import { CMD, DIFF_SCHEME, VIEW_ID } from '../../shared/protocol';
+import { CMD, VIEW_ID } from '../../shared/protocol';
 import type { AdviceAction, AdviceCard } from '../../shared/protocol';
 import { parseAdvice } from '../ai/advice';
 import { collectEditorSnippet, formatSnippet, type EditorSnippet } from '../ai/context';
@@ -21,17 +21,10 @@ import { checkStyle, inferStyleProfile } from '../standards/profile';
 import { getFixHistory } from '../history/fixHistory';
 import { isPatchStale } from '../inline/patch';
 import { truncate } from '../util';
+import { baselineFor, verifyAfterEdit } from '../verify/verify';
+import { showProposedDiff } from './diff';
 
 const execFileAsync = promisify(execFile);
-
-/** 虚拟文档内容：用于并排 diff 预览，不落盘。 */
-const previews = new Map<string, string>();
-
-export const diffContentProvider: vscode.TextDocumentContentProvider = {
-  provideTextDocumentContent(uri) {
-    return previews.get(uri.path) ?? '';
-  },
-};
 
 export async function focusPet(): Promise<void> {
   try {
@@ -297,6 +290,7 @@ export function bindAdviceActions(host: PetHost): void {
       const edit = new vscode.WorkspaceEdit();
       edit.replace(item.documentUri, item.range, item.code);
       const beforeText = document.getText();
+      const baseline = baselineFor(document, host.dependentsOf(document.uri));
       const ok = await vscode.workspace.applyEdit(edit);
       if (!ok) {
         host.resolveAdvice(id, action, false);
@@ -304,7 +298,7 @@ export function bindAdviceActions(host: PetHost): void {
         return;
       }
       const afterText = document.getText();
-      await getFixHistory()?.add(item.documentUri, beforeText, afterText, item.card.title);
+      const meta = await getFixHistory()?.add(item.documentUri, beforeText, afterText, item.card.title);
       try {
         await document.save();
       } catch {
@@ -313,6 +307,7 @@ export function bindAdviceActions(host: PetHost): void {
       pendingAdvice.delete(id);
       host.resolveAdvice(id, action, true);
       host.say('已经按说明改好了，跑一下验证吧。', { action: 'happy' });
+      void verifyAfterEdit(host, document, baseline, meta);
       return;
     }
 
@@ -336,31 +331,6 @@ export function bindAdviceActions(host: PetHost): void {
 async function showDiff(item: PendingAdvice): Promise<void> {
   const document = await vscode.workspace.openTextDocument(item.documentUri);
   await showProposedDiff(document, item.range, item.code, item.card.title);
-}
-
-/** 打开“原文 vs 建议”的并排 diff，供行内对话和规范整改复用。 */
-export async function showProposedDiff(
-  document: vscode.TextDocument,
-  range: vscode.Range,
-  code: string,
-  title: string,
-): Promise<void> {
-  const full = document.getText();
-  const start = document.offsetAt(range.start);
-  const end = document.offsetAt(range.end);
-  const proposed = full.slice(0, start) + code + full.slice(end);
-
-  const ext = path.extname(document.fileName) || '.txt';
-  const id = `/${crypto.randomUUID()}${ext}`;
-  previews.set(id, proposed);
-  const right = vscode.Uri.parse(`${DIFF_SCHEME}:${id}`);
-  await vscode.commands.executeCommand(
-    'vscode.diff',
-    document.uri,
-    right,
-    `${title} · ${path.basename(document.fileName)}`,
-    { preview: true },
-  );
 }
 
 // ------------------------------------------------------------------ Git
