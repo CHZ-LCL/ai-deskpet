@@ -6,7 +6,7 @@
 
 ### Added
 
-- 发布者改为 **Git-Gud-AI**（`publisher: git-gud-ai`），仓库地址同步。
+- 发布者改为 **Git-Gud-AI**（`publisher: git-gud-ai`），扩展显示名改为 `Git-Gud-AI · DeskPet`，仓库地址同步。
 - 新默认桌宠：Git-Gud-AI 拟人形象（ComfyUI + SDXL 生成，透明背景），随包附带正面立绘与闭眼帧。
 - 单张立绘支持伪 Live2D 待机：呼吸、轻微摆动、随机眨眼（`pet-blink.png` 可选）。
 - 正面 / 侧面 / 背面三视图（透明背景）放在 `docs/character/`，并输出到桌面。
