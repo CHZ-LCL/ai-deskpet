@@ -124,6 +124,8 @@ The panel follows the VS Code display language by default. To force a language:
 - The command palette, settings, panel copy, modal dialogs, quick picks, status-bar messages, and inline comment threads are localized (English / Simplified Chinese).
 - With `en`, the system prompt switches to English so answers are written in English.
 - Switch languages in the panel: **⚙ Settings → Language → Auto / 中文 / English**, or with the `deskpet.ui.language` setting.
+
+![Language switch](docs/en-settings.png)
 - Required structured markers such as `【问题】` stay in the prompt for reliable parsing; the prose is English.
 
 ---

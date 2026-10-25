@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { L } from '../i18n';
 
 export type FrameworkId =
   | 'vitest'
@@ -110,7 +111,7 @@ export async function detectTestFramework(
 
   return {
     id: 'unknown',
-    label: '通用单元测试',
+    label: L('通用单元测试', 'generic unit tests'),
     fileFor: (rel) => {
       const ext = path.posix.extname(rel);
       return `${rel.slice(0, -ext.length)}.test${ext}`;
