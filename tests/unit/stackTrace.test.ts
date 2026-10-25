@@ -30,9 +30,10 @@ test('解析 Python Traceback 并取最后一行异常', () => {
   );
   assert.equal(parsed?.language, 'python');
   assert.match(parsed?.message ?? '', /AttributeError/);
+  // Python traceback 反转后，最深的失败帧在最前面
   assert.deepEqual(
     parsed?.frames.map((frame) => `${frame.file}:${frame.line}`),
-    ['app/main.py:10', 'app/service.py:22'],
+    ['app/service.py:22', 'app/main.py:10'],
   );
 });
 

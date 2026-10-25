@@ -91,7 +91,10 @@ export function parseFailure(input: string): ParsedFailure | undefined {
     return undefined;
   }
 
-  return { language, message, frames: frames.slice(0, 12), raw };
+  // Python 的 traceback 是“外层在前、出错点在最后”，反转后 frames[0] 才是真正的失败帧
+  const ordered = language === 'python' ? [...frames].reverse() : frames;
+
+  return { language, message, frames: ordered.slice(0, 12), raw };
 }
 
 function detectLanguage(raw: string, hasFrames: boolean): FailureLanguage {
