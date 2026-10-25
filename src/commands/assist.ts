@@ -14,12 +14,11 @@ import {
   refactorPrompt,
   TEACH_DEPTH_LABEL,
   teachPrompt,
-  testPrompt,
   type TeachDepth,
 } from '../ai/prompts';
 import type { PetHost } from '../pet/host';
 import { checkStyle, inferStyleProfile } from '../standards/profile';
-import { extractCode, truncate } from '../util';
+import { truncate } from '../util';
 
 const execFileAsync = promisify(execFile);
 
@@ -46,7 +45,6 @@ export function registerAssistCommands(host: PetHost): vscode.Disposable[] {
     vscode.commands.registerCommand(CMD.teach, () => teach(host)),
     vscode.commands.registerCommand(CMD.fix, () => fix(host)),
     vscode.commands.registerCommand(CMD.refactor, () => refactor(host)),
-    vscode.commands.registerCommand(CMD.tests, () => addTests(host)),
     vscode.commands.registerCommand(CMD.commitMessage, () => commitMessage(host)),
   ];
 }
@@ -187,32 +185,6 @@ async function referenceSummary(editor: vscode.TextEditor): Promise<string> {
   } catch {
     return '';
   }
-}
-
-async function addTests(host: PetHost): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  const snippet = editor ? collectEditorSnippet() : undefined;
-  if (!editor || !snippet) {
-    host.say('先选中一段代码，我来给它们写测试。', { action: 'think' });
-    await focusPet();
-    return;
-  }
-  await focusPet();
-  const reply = await host.prompt(
-    `为 ${snippet.relativePath} 写测试`,
-    `${testPrompt(snippet.languageId, snippet.relativePath)}\n\n${formatSnippet(snippet)}`,
-    { action: 'think' },
-  );
-  if (!reply.trim()) {
-    return;
-  }
-  const { code } = extractCode(reply);
-  const document = await vscode.workspace.openTextDocument({
-    content: code,
-    language: testLanguageFor(snippet.languageId),
-  });
-  await vscode.window.showTextDocument(document, { preview: false });
-  host.say('测试写好了，记得保存到项目里，再跑一遍看看。', { action: 'happy' });
 }
 
 export async function offerReplacement(
@@ -472,12 +444,3 @@ async function fillScmInput(message: string): Promise<void> {
   }
 }
 
-function testLanguageFor(languageId: string): string {
-  const map: Record<string, string> = {
-    typescriptreact: 'typescript',
-    javascriptreact: 'javascript',
-    vue: 'javascript',
-    svelte: 'javascript',
-  };
-  return map[languageId] ?? languageId;
-}

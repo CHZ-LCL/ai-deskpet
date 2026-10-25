@@ -1,11 +1,14 @@
 import * as vscode from 'vscode';
 import { API_KEY_SECRET } from './ai';
-import { diffContentProvider, focusPet, registerAssistCommands, bindAdviceActions } from './commands/assist';
+import { bindAdviceActions, diffContentProvider, focusPet, registerAssistCommands } from './commands/assist';
+import { registerDocCommands } from './commands/docs';
+import { registerTestCommands } from './commands/tests';
 import { registerDebugCommands } from './commands/debug';
 import { registerStandardsCommands } from './commands/standards';
 import { registerInlineChat } from './inline/chat';
 import { registerInlineCodeLens } from './inline/codeLens';
 import { quickSetup, registerAutoSetup } from './ai/setup';
+import { scanDocDrift } from './docs/docTargets';
 import { registerTerminalCapture } from './debug/terminalLog';
 import { ProjectContext } from './context/project';
 import { DOCS_KEY_SECRET } from './docs/search';
@@ -86,6 +89,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(...registerAssistCommands(host));
   context.subscriptions.push(...registerDebugCommands(host));
   context.subscriptions.push(...registerStandardsCommands(host));
+  context.subscriptions.push(...registerTestCommands(host));
+  context.subscriptions.push(...registerDocCommands(host));
   registerInlineChat(context, host);
   registerInlineCodeLens(context);
   bindAdviceActions(host);
@@ -213,6 +218,28 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
   // 久坐提醒：按“连续编码时长”计时，中途休息会自动重新开始
   let codingSince = Date.now();
   let lastActivity = Date.now();
+  const lastDocHint = new Map<string, number>();
+
+  const maybeWarnDocDrift = (document: vscode.TextDocument) => {
+    const text = document.getText();
+    if (text.length > 300_000) {
+      return;
+    }
+    const drift = scanDocDrift(text, document.languageId);
+    if (!drift.length) {
+      return;
+    }
+    const key = document.uri.toString();
+    if (Date.now() - (lastDocHint.get(key) ?? 0) < 10 * 60_000) {
+      return;
+    }
+    lastDocHint.set(key, Date.now());
+    host.nudge(`这个文件有 ${drift.length} 处文档和签名对不上`, {
+      priority: 'low',
+      action: 'think',
+      actions: [{ label: '查看', command: CMD.checkDocs }],
+    });
+  };
   const markActive = () => {
     const now = Date.now();
     if (now - lastActivity > 5 * 60_000) {
@@ -227,6 +254,7 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
       markActive();
       if (document.uri.scheme === 'file') {
         void project.updateFile(document.uri);
+        maybeWarnDocDrift(document);
       }
       if (!config().get<boolean>('pet.reactOnSave', true) || document.uri.scheme !== 'file') {
         return;

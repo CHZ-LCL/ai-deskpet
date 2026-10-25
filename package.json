@@ -139,7 +139,17 @@
       },
       {
         "command": "deskpet.addTests",
-        "title": "为选中代码生成测试",
+        "title": "为选中代码生成单元测试（含边界用例）",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.generateDocs",
+        "title": "为函数 / 类生成文档注释",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.checkDocs",
+        "title": "检查文档与签名是否同步",
         "category": "AI 桌宠"
       },
       {
@@ -237,6 +247,14 @@
           "command": "deskpet.addTests",
           "when": "editorHasSelection",
           "group": "deskpet@7"
+        },
+        {
+          "command": "deskpet.generateDocs",
+          "group": "deskpet@8"
+        },
+        {
+          "command": "deskpet.checkDocs",
+          "group": "deskpet@9"
         }
       ],
       "commandPalette": [

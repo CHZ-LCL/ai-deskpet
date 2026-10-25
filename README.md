@@ -31,6 +31,8 @@
 | 克制提醒 | 安静 / 平衡 / 话多三档，打字时自动静默，未读提醒用小角标而不弹窗 |
 | 决策透明 | 修复/重构先给「问题·原因·方案·影响」卡片，再让你决定是否应用 |
 | 智能检修 | 实时诊断角标、终端失败捕获、堆栈解析，解释 + 补丁 + 自动 diff |
+| 测试生成 | 识别测试框架，先列分支再写用例，覆盖空值/边界/异常路径 |
+| 文档同步 | 生成/扩写 JSDoc、Go doc、docstring；保存时检测参数漂移 |
 | 诊断修复 | 读取 VS Code 诊断信息，给出可直接替换的修复代码，支持 diff 预览 |
 | 重构 / 测试 | 按目标重构选区；为选区生成测试文件 |
 | Git 提交信息 | 读 `git diff`，按 Conventional Commits 生成并一键填入提交框 |
@@ -397,6 +399,41 @@ ollama pull qwen2.5-coder:14b
 
 ---
 
+## 自动化测试与文档
+
+### 单元测试：先列分支，再写代码
+
+`写测试`（或右键「为选中代码生成单元测试」）会先识别工程里实际用的框架：
+
+| 工程 | 识别方式 | 文件约定 |
+| --- | --- | --- |
+| Vitest / Jest / Mocha / Playwright | `package.json` 依赖 | 沿用现有 `.test.` / `.spec.` / `__tests__` 习惯 |
+| Node Test Runner | 无测试依赖时的 JS/TS 兜底 | 同目录 `.test.ts` |
+| pytest | Python 默认 | `test_<name>.py`，有 `tests/` 就放进去 |
+| go test | Go | `<name>_test.go`，表驱动 |
+| JUnit / xUnit / cargo test | 语言默认 | 对应测试目录 |
+
+生成时强制先列**要覆盖的分支**（正常、空值/缺参、边界值、异常/异步拒绝），再给完整测试代码：
+
+- 已有测试文件 → 追加到末尾，**先看 diff 再应用**；
+- 没有测试文件 → 先给预览，再一键按建议路径创建；
+- 测试名必须说清场景，不允许 `test1/test2`；
+- 不要 mock 被测函数本身；外部依赖必须 mock 时写清理由。
+
+> 覆盖率目前是“按分支设计用例”，不会自动跑覆盖率报告。想接 `vitest --coverage` / `pytest --cov` 的话，可以在下一步把测试运行与报告读回来。
+
+### 文档：生成、扩写、防漂移
+
+- **生成/扩写**（右键「为函数 / 类生成文档注释」）：按语言选格式——JSDoc/TSDoc、Go doc、Rust `///`、
+  Java/C# 注释、Python Google 风格 docstring。已有简短注释时会**保留原意并扩写**，不会推倒重来。
+- **替换范围**覆盖“注释 + 签名”，所以 diff 里能直接看到注释和参数一起变化；Python 则替换 `def` 行与旧 docstring。
+- 参数会写含义、单位/范围、是否可空；返回值与异常；不确定的行为标 `TODO(确认)`，禁止编造。
+- **防漂移**：保存文件时做一次确定性检查——文档里已经写了 `@param` / `:param`，但参数名和签名对不上
+  （缺失或多余）时，桌宠会用低优先级提醒，点「查看」可以挑一处补文档。
+  只统计“本来就在写参数文档”的函数，避免把只有一句摘要的注释也当成问题。
+
+---
+
 ## 设置项
 
 | 设置 | 默认值 | 说明 |
@@ -455,7 +492,9 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.reviewRules` | — | 按团队规范检查当前文件 |
 | `deskpet.modernize` | — | 现代化重构选中代码 |
 | `deskpet.refactorSelection` | — | 按目标重构选区 |
-| `deskpet.addTests` | — | 为选区生成测试文件 |
+| `deskpet.addTests` | — | 为选区/函数生成单元测试（含边界用例） |
+| `deskpet.generateDocs` | — | 为函数/类生成或扩写文档注释 |
+| `deskpet.checkDocs` | — | 检查文档与签名是否同步 |
 | `deskpet.commitMessage` | — | 根据 git diff 生成提交信息 |
 | `deskpet.searchDocs` | — | 查资料 / 抓取文档 URL |
 | `deskpet.reindex` | — | 重建项目索引（也会在状态栏显示进度） |

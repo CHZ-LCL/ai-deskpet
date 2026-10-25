@@ -489,7 +489,9 @@ dom.quick.addEventListener('click', (event) => {
           ? CMD.fix
           : kind === 'tests'
             ? CMD.tests
-            : undefined;
+            : kind === 'docgen'
+              ? CMD.generateDocs
+              : undefined;
   if (command) {
     post({ type: 'command', command });
   }

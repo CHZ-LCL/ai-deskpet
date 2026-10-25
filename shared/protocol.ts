@@ -188,6 +188,8 @@ export const CMD = {
   reviewFile: 'deskpet.reviewFile',
   reviewRules: 'deskpet.reviewRules',
   modernize: 'deskpet.modernize',
+  generateDocs: 'deskpet.generateDocs',
+  checkDocs: 'deskpet.checkDocs',
   inlineChat: 'deskpet.inlineChat',
   inlineApply: 'deskpet.inlineApply',
   inlineDiff: 'deskpet.inlineDiff',

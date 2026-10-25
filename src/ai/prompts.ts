@@ -268,6 +268,69 @@ export function rulesPrompt(
   ].join('\n');
 }
 
+export function testsPrompt(options: {
+  file: string;
+  languageId: string;
+  signature: string;
+  code: string;
+  framework: string;
+  idiom: string;
+  suggestedFile: string;
+}): string {
+  return [
+    `你在为 ${options.file} 里的符号写单元测试。`,
+    `测试框架：${options.framework}；写法：${options.idiom}；建议文件：${options.suggestedFile}。`,
+    '',
+    '要求：',
+    '1. 先列出要覆盖的分支，每条格式 `- 场景：输入 → 预期`。至少包含：正常路径、参数缺失/为空、边界值（0、-1、空集合、超长）、异常或异步拒绝；签名里有可选参数或联合类型时逐个覆盖。',
+    '2. 然后**只输出一个完整测试文件的代码块**，不要输出其它内容。',
+    '3. 不要 mock 被测函数本身；必须 mock 外部依赖时，用一行注释说明理由。',
+    '4. 测试名说清场景，避免 test1 / test2。',
+    '5. 不要修改产品代码；如果被测逻辑无法测试（例如依赖全局状态），在代码块外用一句话说明。',
+    '',
+    '签名：',
+    '```' + options.languageId,
+    options.signature,
+    '```',
+    '',
+    '实现：',
+    '```' + options.languageId,
+    options.code,
+    '```',
+  ].join('\n');
+}
+
+export function documentationPrompt(options: {
+  file: string;
+  languageId: string;
+  style: string;
+  signature: string;
+  existingDoc?: string;
+}): string {
+  return [
+    `为 ${options.file} 里的符号生成或扩写文档注释。`,
+    `语言：${options.languageId}；风格：${options.style}。`,
+    '',
+    '当前签名：',
+    '```' + options.languageId,
+    options.signature,
+    '```',
+    options.existingDoc
+      ? ['', '已有注释（保留其中有效的信息和作者意图）：', '```', options.existingDoc, '```'].join('\n')
+      : '\n目前没有文档注释。',
+    '',
+    '要求：',
+    '1. 一句话摘要说清“做什么”，不要复述实现细节。',
+    '2. 每个参数写含义、单位/取值范围、是否可以为空。',
+    '3. 写清返回值与可能抛出的错误（没有就省略该项）。',
+    '4. 只有在确实有帮助时才加一个简短示例。',
+    '5. 不确定的行为写 `TODO(确认)`，不要编造。',
+    '6. **只输出一个代码块**：注释 + 完整签名（Python 是 def 行 + docstring），不要函数体。',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export function reviewPrompt(file: string, languageId: string, code: string): string {  return [
     `请对下面这段 ${languageId} 代码（${file}）做一次静态检修。这不是让你重写，而是找问题。`,
     '',

@@ -58,6 +58,7 @@ export function renderWebviewHtml(webview: vscode.Webview, context: vscode.Exten
         <button data-quick="teach">讲透它</button>
         <button data-quick="fix">帮我修</button>
         <button data-quick="tests">写测试</button>
+        <button data-quick="docgen">补文档</button>
         <button data-quick="docs">查文档</button>
         <button data-quick="clear" class="ghost">清空</button>
       </div>
