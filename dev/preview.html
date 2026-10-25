@@ -169,6 +169,10 @@
       if (params.has('empty')) {
         init.history = [];
       }
+      const themeParam = params.get('theme');
+      if (themeParam) {
+        init.config.theme.id = themeParam;
+      }
       window.postMessage(init, '*');
       if (params.has('cards')) {
         setTimeout(() => {
@@ -281,6 +285,7 @@
       document.querySelector('.device')?.classList.add('plain');
     }
     if (params.has('light')) {
+      document.body.classList.add('vscode-light');
       document.documentElement.style.setProperty('--bg', '#f6f8f7');
       document.documentElement.style.setProperty('--ink', '#16201d');
       document.documentElement.style.setProperty('--vscode-textCodeBlock-background', 'rgba(0,0,0,0.05)');
@@ -293,6 +298,7 @@
       document.body.style.background = '#e4e9e7';
       document.querySelector('.device')?.classList.add('light');
     } else {
+      document.body.classList.add('vscode-dark');
       document.documentElement.style.setProperty('--vscode-textCodeBlock-background', '#2b2b2b');
       document.documentElement.style.setProperty('--vscode-textPreformat-foreground', '#d4d4d4');
       document.documentElement.style.setProperty('--vscode-editorWidget-background', '#252526');

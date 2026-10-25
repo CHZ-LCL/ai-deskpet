@@ -1956,6 +1956,18 @@ textarea#custom-css {
   color: var(--ink);
 }
 
+/* 亮色主题下，浅色强调色的文字需要压深，保证对比度 */
+body.vscode-light .speech-action,
+body.vscode-light .primary-btn,
+body.vscode-light .advice-actions button.primary,
+body.vscode-light .segmented button.active,
+body.vscode-light .quick-actions button:hover,
+body.vscode-light .quick-actions button.active,
+body.vscode-light .link-btn,
+body.vscode-light .problem-actions button:hover {
+  color: color-mix(in srgb, var(--accent) 42%, var(--ink));
+}
+
 /* ---------------------------------------------------------------- 响应式 */
 
 @media (min-width: 620px) {
