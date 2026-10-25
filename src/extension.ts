@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { API_KEY_SECRET } from './ai';
 import { diffContentProvider, focusPet, registerAssistCommands, bindAdviceActions } from './commands/assist';
+import { registerDebugCommands } from './commands/debug';
+import { registerTerminalCapture } from './debug/terminalLog';
 import { ProjectContext } from './context/project';
 import { DOCS_KEY_SECRET } from './docs/search';
 import { AssetStore } from './pet/assets';
@@ -77,7 +79,23 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(...registerAssistCommands(host));
+  context.subscriptions.push(...registerDebugCommands(host));
   bindAdviceActions(host);
+
+  registerTerminalCapture(context, (failure) => {
+    if (!vscode.workspace.getConfiguration('deskpet').get<boolean>('debug.watchTerminal', true)) {
+      return;
+    }
+    const exit = typeof failure.exitCode === 'number' ? `（退出码 ${failure.exitCode}）` : '';
+    host.nudge(`命令失败了${exit}，要我看看报错吗？`, {
+      priority: 'normal',
+      action: 'alert',
+      actions: [
+        { label: '分析报错', command: CMD.analyzeFailure },
+        { label: '先不用' },
+      ],
+    });
+  });
 
   registerReactions(context, host, project);
   registerStartup(context);
@@ -223,11 +241,33 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
   let diagnosticsTimer: NodeJS.Timeout | undefined;
   let deleteTimer: NodeJS.Timeout | undefined;
   const lastHint = new Map<string, number>();
+
+  const publishProblems = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      host.publishProblems(undefined, []);
+      return;
+    }
+    const items = vscode.languages
+      .getDiagnostics(editor.document.uri)
+      .slice(0, 20)
+      .map((diagnostic) => ({
+        line: diagnostic.range.start.line + 1,
+        column: diagnostic.range.start.character + 1,
+        severity:
+          diagnostic.severity === vscode.DiagnosticSeverity.Error
+            ? ('error' as const)
+            : diagnostic.severity === vscode.DiagnosticSeverity.Warning
+              ? ('warning' as const)
+              : ('info' as const),
+        message: diagnostic.message,
+        source: diagnostic.source,
+      }));
+    host.publishProblems(vscode.workspace.asRelativePath(editor.document.uri, false), items);
+  };
+
   context.subscriptions.push(
     vscode.languages.onDidChangeDiagnostics((event) => {
-      if (!config().get<boolean>('pet.reactOnError', true)) {
-        return;
-      }
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         return;
@@ -240,6 +280,11 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
         clearTimeout(diagnosticsTimer);
       }
       diagnosticsTimer = setTimeout(() => {
+        publishProblems();
+
+        if (!config().get<boolean>('pet.reactOnError', true)) {
+          return;
+        }
         const errors = vscode.languages
           .getDiagnostics(editor.document.uri)
           .filter((diagnostic) => diagnostic.severity === vscode.DiagnosticSeverity.Error);
@@ -259,12 +304,17 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
             { label: '讲透这段', command: CMD.teach },
           ],
         });
-      }, 2500);
+      }, 2000);
     }),
+    vscode.window.onDidChangeActiveTextEditor(() => publishProblems()),
   );
 
+  const initialProblems = setTimeout(publishProblems, 2500);
+  context.subscriptions.push(new vscode.Disposable(() => clearTimeout(initialProblems)));
+
   context.subscriptions.push(
-    vscode.tasks.onDidEndTaskProcess((event) => {      if (event.exitCode === undefined || event.exitCode === 0) {
+    vscode.tasks.onDidEndTaskProcess((event) => {
+      if (event.exitCode === undefined || event.exitCode === 0) {
         return;
       }
       const name = event.execution.task.name;

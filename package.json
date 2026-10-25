@@ -6,7 +6,7 @@
   "publisher": "your-publisher-id",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.93.0"
   },
   "categories": [
     "AI",
@@ -85,6 +85,31 @@
       {
         "command": "deskpet.fixSelection",
         "title": "诊断并修复选中代码",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.explainDiagnostic",
+        "title": "解释这行报错（人话版）",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.fixDiagnostic",
+        "title": "修复这行报错…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.analyzeFailure",
+        "title": "分析最近一次命令失败",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.analyzeClipboard",
+        "title": "分析剪贴板里的报错 / 堆栈",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.reviewFile",
+        "title": "体检当前文件（逻辑漏洞检查）",
         "category": "AI 桌宠"
       },
       {
@@ -173,9 +198,21 @@
           "group": "deskpet@3"
         },
         {
+          "command": "deskpet.explainDiagnostic",
+          "group": "deskpet@4"
+        },
+        {
+          "command": "deskpet.fixDiagnostic",
+          "group": "deskpet@5"
+        },
+        {
+          "command": "deskpet.reviewFile",
+          "group": "deskpet@6"
+        },
+        {
           "command": "deskpet.addTests",
           "when": "editorHasSelection",
-          "group": "deskpet@4"
+          "group": "deskpet@7"
         }
       ],
       "commandPalette": [
@@ -386,6 +423,16 @@
           "minimum": 1000,
           "maximum": 30000,
           "description": "每次提问附带的项目上下文最大字符数。上下文窗口小的模型建议调低到 4000~6000。"
+        },
+        "deskpet.fix.autoDiff": {
+          "type": "boolean",
+          "default": true,
+          "description": "从报错/诊断生成修复时，自动打开修改前后的并排 diff。"
+        },
+        "deskpet.debug.watchTerminal": {
+          "type": "boolean",
+          "default": true,
+          "description": "捕获终端里失败的命令输出（需要 VS Code 1.93+ 的 Shell Integration），用于分析报错。"
         }
       }
     }

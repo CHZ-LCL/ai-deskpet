@@ -9,6 +9,8 @@
 - **音效随便换**：按场景绑定自定义音效，没配就用内置合成音；支持系统 TTS 朗读。
 - **AI 后端三选一**：本机 Ollama（默认）、任意 OpenAI 兼容接口、VS Code 语言模型 API。
 
+> 需要 **VS Code 1.93+**（终端失败捕获依赖 Shell Integration；其它功能在更早版本也能用，但插件会要求 1.93）。
+
 ![预览](docs/preview.png)
 
 > 截图是开发期的界面预览，可在 `dev/preview.html` 里自己跑起来看。
@@ -26,6 +28,7 @@
 | 老师模式 | 逐行讲解 / 逻辑梳理 / 设计思路三种深度，按行号讲清“为什么” |
 | 克制提醒 | 安静 / 平衡 / 话多三档，打字时自动静默，未读提醒用小角标而不弹窗 |
 | 决策透明 | 修复/重构先给「问题·原因·方案·影响」卡片，再让你决定是否应用 |
+| 智能检修 | 实时诊断角标、终端失败捕获、堆栈解析，解释 + 补丁 + 自动 diff |
 | 诊断修复 | 读取 VS Code 诊断信息，给出可直接替换的修复代码，支持 diff 预览 |
 | 重构 / 测试 | 按目标重构选区；为选区生成测试文件 |
 | Git 提交信息 | 读 `git diff`，按 Conventional Commits 生成并一键填入提交框 |
@@ -255,6 +258,46 @@ ollama pull qwen2.5-coder:14b
 
 ---
 
+## 智能检修（Debug & Fix）
+
+三个入口，最终都汇到同一套「解释 → 定位 → 补丁 → diff」流程：
+
+| 入口 | 怎么触发 | 能拿到什么 |
+| --- | --- | --- |
+| 实时诊断 | 面板底部的 `⚠ 3` 角标 | 当前文件的错误/警告清单，逐条「解释 / 修复」 |
+| 终端失败 | 命令退出码非 0 时桌宠会问一句 | 最近一次命令的完整输出（VS Code 1.93+ Shell Integration） |
+| 剪贴板/堆栈 | 命令「分析剪贴板里的报错 / 堆栈」 | 你从任何地方复制来的日志 |
+
+![问题清单](docs/problems.png)
+
+### 堆栈会被解析成真实位置
+
+支持 JS/TS、Python、Java/Kotlin、C#、Go、Rust 的常见格式，提取 `文件:行:列` 和函数名后：
+
+1. 按工作区路径 / 文件名匹配到真实文件（找不到就只解释、不改代码）。
+2. 用 LSP 找到**包含该行的最小符号**（函数/方法）作为替换范围，避免整文件重写。
+3. 再附上另外 1-2 个调用帧的上下文，让模型判断是“这层写错了”还是“上层传错了”。
+
+解释固定四段：**问题**（人话现象）、**原因**（哪个值不满足什么假设，指出真正出错点）、
+**方案**、**影响**。随后给出**一个**完整代码块，只替换上面标注的那段代码。
+
+### 补丁与差异
+
+- 生成后默认自动打开**并排 diff**（`deskpet.fix.autoDiff` 可关）。
+- 应用前会校验选区内容是否被改过；不一致就拒绝并提示重新生成。
+- 应用成功后写回卡片状态，不会静默改文件。
+
+### 静态体检
+
+命令「体检当前文件」会让模型按清单检查：空值、边界、异常吞掉、资源泄漏、并发竞态、
+类型断言滥用、异步未 await、循环重复计算、敏感信息泄漏。输出 `[高]/[中]/[低] L42` 的清单，
+并给出“最该先修的一条”。它只报告，不直接改代码。
+
+> 终端捕获依赖 VS Code 1.93 的 Shell Integration；如果你的终端没有启用 shell integration，
+> 这个入口会自动跳过，其它入口不受影响。
+
+---
+
 ## 设置项
 
 | 设置 | 默认值 | 说明 |
@@ -283,6 +326,8 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.context.enabled` | `true` | 是否启用项目级上下文索引 |
 | `deskpet.context.maxFiles` | `4000` | 索引文件数上限 |
 | `deskpet.context.maxChars` | `8000` | 每次提问附带的上下文预算 |
+| `deskpet.fix.autoDiff` | `true` | 从报错生成修复时自动打开并排 diff |
+| `deskpet.debug.watchTerminal` | `true` | 捕获终端失败输出（需 VS Code 1.93+） |
 
 ---
 
@@ -294,6 +339,11 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.explainSelection` | `Ctrl+Alt+E` | 讲解选中代码（无选区则讲光标附近） |
 | `deskpet.teachSelection` | — | 当老师讲透：逐行 / 逻辑 / 设计思路 |
 | `deskpet.fixSelection` | — | 诊断并修复，可应用 / 看 diff / 复制 |
+| `deskpet.explainDiagnostic` | — | 用人话解释这一行的报错 |
+| `deskpet.fixDiagnostic` | — | 修复这一行的报错（自动 diff） |
+| `deskpet.analyzeFailure` | — | 分析最近一次失败的终端命令 |
+| `deskpet.analyzeClipboard` | — | 分析剪贴板里的报错 / 堆栈 |
+| `deskpet.reviewFile` | — | 静态体检当前文件 |
 | `deskpet.refactorSelection` | — | 按目标重构选区 |
 | `deskpet.addTests` | — | 为选区生成测试文件 |
 | `deskpet.commitMessage` | — | 根据 git diff 生成提交信息 |

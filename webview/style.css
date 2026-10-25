@@ -758,7 +758,9 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 42%;
+  flex: 0 1 auto;
+  max-width: 38%;
+  min-width: 0;
 }
 
 .index-chip {
@@ -780,6 +782,101 @@ button {
   height: 5px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--accent) 75%, transparent);
+}
+
+.problem-chip {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--warm) 40%, var(--line));
+  background: color-mix(in srgb, var(--warm) 10%, transparent);
+  color: color-mix(in srgb, var(--warm) 85%, var(--ink));
+  font-size: 9.6px;
+  line-height: 15px;
+  white-space: nowrap;
+}
+
+.problem-chip.has-error {
+  border-color: color-mix(in srgb, #ff8a80 48%, transparent);
+  background: color-mix(in srgb, #ff8a80 12%, transparent);
+  color: color-mix(in srgb, #ffb3aa 92%, var(--ink));
+}
+
+.problem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.problem-row {
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.problem-head {
+  display: grid;
+  grid-template-columns: 8px auto 1fr;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 11.4px;
+  line-height: 1.5;
+}
+
+.sev-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  align-self: center;
+}
+
+.sev-error .sev-dot {
+  background: #ff8a80;
+}
+
+.sev-warning .sev-dot {
+  background: var(--warm);
+}
+
+.problem-line {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.problem-msg {
+  overflow-wrap: anywhere;
+}
+
+.problem-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 5px;
+  padding-left: 14px;
+}
+
+.problem-actions button {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 10.4px;
+}
+
+.problem-actions button:hover {
+  border-color: var(--accent);
+  color: color-mix(in srgb, var(--accent) 85%, var(--ink));
+}
+
+.empty-state {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11.4px;
+  line-height: 1.9;
 }
 
 .link-btn {

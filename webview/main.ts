@@ -6,6 +6,7 @@ import type {
   PetAction,
   PetConfig,
   PetSnapshot,
+  ProblemItem,
   SoundItem,
   SoundSlot,
   WebviewMessage,
@@ -71,6 +72,7 @@ const dom = {
   quick: el('quick-actions'),
   modelChip: el('model-chip'),
   indexChip: el('index-chip'),
+  problemChip: el<HTMLButtonElement>('problem-chip'),
   drawer: el('drawer'),
   drawerTitle: el('drawer-title'),
   drawerBody: el('drawer-body'),
@@ -95,6 +97,8 @@ const state: {
   rendererKey: string;
   initialized: boolean;
   unread: number;
+  problems: ProblemItem[];
+  problemsFile?: string;
 } = {
   assets: [],
   sounds: [],
@@ -103,6 +107,7 @@ const state: {
   rendererKey: '',
   initialized: false,
   unread: 0,
+  problems: [],
 };
 
 // ------------------------------------------------------------------ 通信
@@ -190,6 +195,14 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
       break;
     case 'adviceDone':
       chat.resolveAdvice(message.id, message.action, message.ok);
+      break;
+    case 'problems':
+      state.problems = message.items;
+      state.problemsFile = message.file;
+      updateProblemChip();
+      if (currentDrawer === 'problems') {
+        renderProblems();
+      }
       break;
     case 'openChat':
       clearUnread();
@@ -495,9 +508,9 @@ dom.petMount.addEventListener('click', (event) => {
 
 // ------------------------------------------------------------------ 工具栏 / 抽屉
 
-let currentDrawer: 'gallery' | 'sound' | 'settings' | undefined;
+let currentDrawer: 'gallery' | 'sound' | 'settings' | 'problems' | undefined;
 
-function openDrawer(kind: 'gallery' | 'sound' | 'settings'): void {
+function openDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems'): void {
   currentDrawer = kind;
   dom.drawer.hidden = false;
   renderDrawer(kind);
@@ -508,11 +521,13 @@ function closeDrawer(): void {
   dom.drawer.hidden = true;
 }
 
-function renderDrawer(kind: 'gallery' | 'sound' | 'settings'): void {
+function renderDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems'): void {
   if (kind === 'gallery') {
     renderGallery();
   } else if (kind === 'sound') {
     renderSounds();
+  } else if (kind === 'problems') {
+    renderProblems();
   } else {
     renderSettings();
   }
@@ -611,8 +626,67 @@ function renderSounds(): void {
   });
 }
 
-function renderSettings(): void {
-  dom.drawerTitle.textContent = '设置';
+function updateProblemChip(): void {
+  const errors = state.problems.filter((item) => item.severity === 'error').length;
+  const total = state.problems.length;
+  dom.problemChip.hidden = total === 0;
+  dom.problemChip.textContent = `⚠ ${total}`;
+  dom.problemChip.classList.toggle('has-error', errors > 0);
+  dom.problemChip.title = state.problemsFile
+    ? `${state.problemsFile}：${errors} 个错误，${total - errors} 条其它提示`
+    : '当前文件的问题';
+}
+
+function renderProblems(): void {
+  dom.drawerTitle.textContent = state.problems.length ? `问题清单 · ${state.problems.length}` : '问题清单';
+
+  if (!state.problems.length) {
+    dom.drawerBody.innerHTML =
+      '<div class="empty-state">当前文件没有诊断问题。<br/>可以点下面的「体检整个文件」做一次静态检查。</div>';
+  } else {
+    dom.drawerBody.innerHTML = `<div class="problem-list">${state.problems
+      .map(
+        (item) => `<div class="problem-row sev-${item.severity}">
+          <div class="problem-head">
+            <span class="sev-dot"></span>
+            <span class="problem-line">L${item.line}</span>
+            <span class="problem-msg">${escapeText(item.message)}</span>
+          </div>
+          <div class="problem-actions">
+            <button data-problem-action="explain" data-line="${item.line}">解释</button>
+            <button data-problem-action="fix" data-line="${item.line}">修复</button>
+          </div>
+        </div>`,
+      )
+      .join('')}</div>`;
+  }
+
+  dom.drawerFoot.innerHTML = `<div class="drawer-actions">
+    <button class="primary-btn" id="review-file">体检整个文件</button>
+    <button class="ghost-btn" id="analyze-clipboard">分析剪贴板里的报错</button>
+  </div>`;
+
+  dom.drawerFoot.querySelector('#review-file')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.reviewFile });
+    closeDrawer();
+  });
+  dom.drawerFoot.querySelector('#analyze-clipboard')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.analyzeClipboard });
+    closeDrawer();
+  });
+
+  dom.drawerBody.querySelectorAll<HTMLElement>('[data-problem-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const line = Number(button.dataset.line);
+      const command =
+        button.dataset.problemAction === 'explain' ? CMD.explainDiagnostic : CMD.fixDiagnostic;
+      post({ type: 'command', command, args: { line } });
+      closeDrawer();
+    });
+  });
+}
+
+function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
   const config = state.config;
   const snapshot = state.snapshot;
   dom.drawerBody.innerHTML = `
@@ -732,6 +806,7 @@ function renderSettings(): void {
 el('btn-gallery').addEventListener('click', () => openDrawer('gallery'));
 el('btn-sound').addEventListener('click', () => openDrawer('sound'));
 el('btn-settings').addEventListener('click', () => openDrawer('settings'));
+dom.problemChip.addEventListener('click', () => openDrawer('problems'));
 el('btn-open-panel').addEventListener('click', () => post({ type: 'command', command: CMD.openPanel }));
 el('drawer-close').addEventListener('click', closeDrawer);
 dom.btnAi.addEventListener('click', () => openDrawer('settings'));

@@ -214,12 +214,46 @@ async function addTests(host: PetHost): Promise<void> {
   host.say('测试写好了，记得保存到项目里，再跑一遍看看。', { action: 'happy' });
 }
 
-async function offerReplacement(
+export async function offerReplacement(
   host: PetHost,
   editor: vscode.TextEditor,
   snippet: EditorSnippet,
   reply: string,
   title: string,
+): Promise<void> {
+  await presentPatch(host, editor.document, snippet, reply, title);
+}
+
+/** 从任意文档 + 范围构造一个“可替换片段”，供报错修复等流程复用。 */
+export function snippetFromRange(
+  document: vscode.TextDocument,
+  range: vscode.Range,
+  diagnostics: string[] = [],
+): EditorSnippet {
+  return {
+    fileName: document.fileName,
+    relativePath: vscode.workspace.asRelativePath(document.uri, false),
+    languageId: document.languageId,
+    code: document.getText(range),
+    hasSelection: true,
+    startLine: range.start.line + 1,
+    endLine: range.end.line + 1,
+    range,
+    diagnostics,
+  };
+}
+
+/**
+ * 把模型的回复变成一张“变更说明”卡片。
+ * autoDiff 只给用户主动发起的修复流程用，避免凭空打开编辑器。
+ */
+export async function presentPatch(
+  host: PetHost,
+  document: vscode.TextDocument,
+  snippet: EditorSnippet,
+  reply: string,
+  title: string,
+  options: { autoDiff?: boolean } = {},
 ): Promise<void> {
   const parsed = parseAdvice(reply);
   if (!parsed.code.trim()) {
@@ -230,7 +264,7 @@ async function offerReplacement(
   const card: AdviceCard = {
     id,
     title,
-    file: vscode.workspace.asRelativePath(editor.document.uri, false),
+    file: vscode.workspace.asRelativePath(document.uri, false),
     startLine: snippet.startLine,
     endLine: snippet.endLine,
     problem: parsed.problem || '模型没有给出问题描述。',
@@ -239,16 +273,20 @@ async function offerReplacement(
     impact: parsed.impact,
   };
 
-  pendingAdvice.set(id, {
-    documentUri: editor.document.uri,
+  const item: PendingAdvice = {
+    documentUri: document.uri,
     range: snippet.range,
-    originalText: editor.document.getText(snippet.range),
+    originalText: document.getText(snippet.range),
     code: parsed.code,
     card,
-  });
+  };
+  pendingAdvice.set(id, item);
 
   // 不是弹窗，而是在对话里放一张“变更说明”卡片，用户自己决定下一步
   host.presentAdvice(card);
+  if (options.autoDiff) {
+    await showDiff(item);
+  }
 }
 
 interface PendingAdvice {

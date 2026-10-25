@@ -26,6 +26,16 @@ export interface AdviceCard {
   impact: string;
 }
 
+export type ProblemSeverity = 'error' | 'warning' | 'info';
+
+export interface ProblemItem {
+  line: number;
+  column: number;
+  severity: ProblemSeverity;
+  message: string;
+  source?: string;
+}
+
 export interface PetAssets {
   /** 单张图片形象的 url */
   imageUri?: string;
@@ -135,6 +145,7 @@ export type HostMessage =
     }
   | { type: 'advice'; advice: AdviceCard }
   | { type: 'adviceDone'; id: string; action: AdviceAction; ok: boolean }
+  | { type: 'problems'; file?: string; items: ProblemItem[] }
   | { type: 'openChat'; draft?: string };
 
 /** webview -> 宿主 */
@@ -156,6 +167,11 @@ export const CMD = {
   chat: 'deskpet.chat',
   explain: 'deskpet.explainSelection',
   teach: 'deskpet.teachSelection',
+  explainDiagnostic: 'deskpet.explainDiagnostic',
+  fixDiagnostic: 'deskpet.fixDiagnostic',
+  analyzeFailure: 'deskpet.analyzeFailure',
+  analyzeClipboard: 'deskpet.analyzeClipboard',
+  reviewFile: 'deskpet.reviewFile',
   fix: 'deskpet.fixSelection',
   refactor: 'deskpet.refactorSelection',
   tests: 'deskpet.addTests',

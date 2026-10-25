@@ -167,3 +167,95 @@ export function docsNoSourcePrompt(query: string, languageId: string): string {
     '给出结论、关键 API 的用法示例（代码块），以及建议查阅的官方文档链接（只写你确认存在的域名路径，不要编造具体页面）。',
   ].join('\n');
 }
+
+export interface PromptSnippet {
+  file: string;
+  startLine: number;
+  endLine: number;
+  languageId: string;
+  code: string;
+}
+
+const EXPLAIN_FORMAT = [
+  '输出格式严格如下（某项确实没有就写“无”）：',
+  '【问题】用一句人话说明用户会遇到什么现象，不要复述报错原文',
+  '【原因】报错到底在说什么：哪个值、哪一步不满足什么假设；如果是堆栈，指出真正的出错点（可以提“上层调用传入了 X，但这里假设它是 Y”）',
+  '【方案】怎么改，最多 3 条',
+  '【影响】改动会影响哪些调用方、边界条件或错误处理',
+];
+
+export function failurePrompt(
+  failure: { language: string; message: string; raw: string },
+  target: PromptSnippet | undefined,
+  related: string,
+): string {
+  return [
+    '用户遇到了下面这段报错/堆栈。请像一位耐心的老师那样，先读懂它，再解释给人听，最后才给代码。',
+    '',
+    ...EXPLAIN_FORMAT,
+    '然后**只输出一个代码块**：替换下面标注的文件片段，不要输出其它文件的内容，不要用省略号。',
+    '',
+    target
+      ? [
+          `目标文件：${target.file}（${target.languageId}，第 ${target.startLine}-${target.endLine} 行，整段替换）`,
+          '```' + target.languageId,
+          target.code,
+          '```',
+        ].join('\n')
+      : '（没有定位到具体文件，这次只解释、不输出代码块。）',
+    related ? `\n堆栈里其它已定位的代码：\n${related}` : '',
+    '',
+    `原始报错（${failure.language}，核心信息：${failure.message || '未识别'}）：`,
+    '```text',
+    failure.raw.slice(0, 7000),
+    '```',
+    '',
+    '要求：解释要具体到变量和取值，不要泛泛而谈“可能为空”。如果信息不足，明确说出你缺什么，而不是猜。',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export function diagnosticPrompt(
+  diagnostics: Array<{ message: string; severity: string; source?: string; line: number }>,
+  target: PromptSnippet,
+): string {
+  const list = diagnostics
+    .map((item) => `- [${item.severity}] 第 ${item.line} 行：${item.message}${item.source ? `（${item.source}）` : ''}`)
+    .join('\n');
+  return [
+    '用户在编辑器里遇到了下面的诊断信息（波浪线/编译错误）。请先用通俗的话解释，再给修复代码。',
+    '',
+    ...EXPLAIN_FORMAT,
+    '然后**只输出一个代码块**，完整替换下面这段代码：',
+    `文件：${target.file}（${target.languageId}，第 ${target.startLine}-${target.endLine} 行）`,
+    '```' + target.languageId,
+    target.code,
+    '```',
+    '',
+    '诊断信息：',
+    list,
+    '',
+    '要求：不要修改这段代码里与报错无关的逻辑；如果根因在别处（比如类型定义、调用方），在【原因】里说清楚，并说明为什么只改这里。',
+  ].join('\n');
+}
+
+export function reviewPrompt(file: string, languageId: string, code: string): string {
+  return [
+    `请对下面这段 ${languageId} 代码（${file}）做一次静态检修。这不是让你重写，而是找问题。`,
+    '',
+    '检查清单：空值与未定义、边界与越界、异常被吞/未处理、资源泄漏、并发与竞态、',
+    '错误码被忽略、类型断言滥用、异步未 await、循环里的重复计算、日志/敏感信息泄漏。',
+    '',
+    '输出要求：',
+    '1. 只列**真实存在**的问题，按严重度排序：`[高]` / `[中]` / `[低]`。',
+    '2. 每条格式：`[高] L42 — 问题一句话`，下一行缩进说明“触发条件 + 会造成什么后果”。',
+    '3. 没有发现问题的类别不要提。',
+    '4. 最后用一行给出建议优先修的那一条，并说明为什么。',
+    '5. 不要输出代码块，除非某个问题必须用 2-3 行代码才能说清。',
+    '',
+    '```' + languageId,
+    code,
+    '```',
+  ].join('\n');
+}

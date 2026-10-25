@@ -78,6 +78,7 @@
         <div class="chat-foot">
           <span id="model-chip" class="model-chip">未配置</span>
           <span id="index-chip" class="index-chip" hidden></span>
+          <button class="problem-chip" id="problem-chip" hidden title="当前文件的问题">⚠ 0</button>
           <button class="link-btn" id="btn-ai">AI 设置</button>
         </div>
       </section>
@@ -193,6 +194,26 @@
       }, 400);
       if (params.has('settings')) {
         setTimeout(() => document.getElementById('btn-settings')?.click(), 700);
+      }
+      if (params.has('problems') || params.has('chip')) {
+        setTimeout(() => {
+          window.postMessage(
+            {
+              type: 'problems',
+              file: 'src/net/fetch.ts',
+              items: [
+                { line: 18, column: 5, severity: 'error', message: '类型“string”的参数不能赋给类型“number”的参数。', source: 'ts' },
+                { line: 24, column: 9, severity: 'warning', message: '此变量已声明，但从未读取。', source: 'ts' },
+                { line: 31, column: 1, severity: 'info', message: '建议使用 const 代替 let。', source: 'eslint' },
+              ],
+            },
+            '*',
+          );
+          document.getElementById('problem-chip')?.click();
+          if (!params.has('problems')) {
+            document.getElementById('drawer-close')?.click();
+          }
+        }, 500);
       }
     });
     const params = new URLSearchParams(location.search);

@@ -67,6 +67,7 @@ export function renderWebviewHtml(webview: vscode.Webview, context: vscode.Exten
       <div class="chat-foot">
         <span id="model-chip" class="model-chip">未配置</span>
         <span id="index-chip" class="index-chip" hidden></span>
+        <button class="problem-chip" id="problem-chip" hidden title="当前文件的问题">⚠ 0</button>
         <button class="link-btn" id="btn-ai">AI 设置</button>
       </div>
     </section>

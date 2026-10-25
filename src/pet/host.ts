@@ -9,6 +9,7 @@ import type {
   PetAction,
   PetConfig,
   PetSnapshot,
+  ProblemItem,
   SoundSlot,
   WebviewMessage,
 } from '../../shared/protocol';
@@ -194,6 +195,11 @@ export class PetHost implements vscode.Disposable {
 
   presentAdvice(advice: AdviceCard): void {
     this.broadcast({ type: 'advice', advice });
+  }
+
+  /** 当前文件的诊断快照：驱动面板底部的问题角标与清单。 */
+  publishProblems(file: string | undefined, items: ProblemItem[]): void {
+    this.broadcast({ type: 'problems', file, items });
   }
 
   resolveAdvice(id: string, action: AdviceAction, ok: boolean): void {
