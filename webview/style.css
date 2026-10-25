@@ -500,17 +500,17 @@ button {
   font-size: 11.4px;
   padding: 1px 5px;
   border-radius: 5px;
-  background: color-mix(in srgb, var(--accent) 13%, transparent);
-  color: color-mix(in srgb, var(--accent) 45%, var(--ink));
+  background: var(--vscode-textCodeBlock-background, color-mix(in srgb, var(--bg) 88%, var(--ink) 8%));
+  color: var(--vscode-textPreformat-foreground, var(--vscode-editor-foreground, var(--ink)));
 }
 
 .code-block {
-  --code-bg: var(--vscode-textCodeBlock-background, color-mix(in srgb, var(--bg) 90%, var(--ink) 8%));
+  --code-bg: var(--vscode-textCodeBlock-background, color-mix(in srgb, var(--bg) 94%, var(--ink) 6%));
   margin: 7px 0;
   border-radius: 11px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
-  background: color-mix(in srgb, var(--code-bg) 92%, var(--accent) 8%);
+  border: 1px solid var(--vscode-editorWidget-border, var(--line));
+  background: var(--code-bg);
 }
 
 .code-head {
@@ -518,9 +518,9 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 3px 9px;
-  background: color-mix(in srgb, var(--code-bg) 84%, var(--accent) 16%);
-  border-bottom: 1px solid color-mix(in srgb, var(--accent) 16%, var(--line));
-  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+  background: var(--vscode-editorWidget-background, color-mix(in srgb, var(--code-bg) 90%, var(--ink) 4%));
+  border-bottom: 1px solid var(--vscode-editorWidget-border, var(--line));
+  color: var(--vscode-descriptionForeground, var(--muted));
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -529,15 +529,15 @@ button {
 .copy-btn {
   border: none;
   background: transparent;
-  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  color: var(--vscode-textLink-foreground, var(--accent));
   font-size: 10.5px;
   padding: 2px 4px;
   border-radius: 5px;
 }
 
 .copy-btn:hover {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--ink);
+  background: var(--vscode-toolbar-hoverBackground, color-mix(in srgb, var(--ink) 10%, transparent));
+  color: var(--vscode-foreground, var(--ink));
 }
 
 .code-block pre {

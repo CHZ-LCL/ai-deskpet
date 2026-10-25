@@ -283,8 +283,23 @@
     if (params.has('light')) {
       document.documentElement.style.setProperty('--bg', '#f6f8f7');
       document.documentElement.style.setProperty('--ink', '#16201d');
+      document.documentElement.style.setProperty('--vscode-textCodeBlock-background', 'rgba(0,0,0,0.05)');
+      document.documentElement.style.setProperty('--vscode-textPreformat-foreground', '#1f2321');
+      document.documentElement.style.setProperty('--vscode-editorWidget-background', '#eef1f0');
+      document.documentElement.style.setProperty('--vscode-editorWidget-border', 'rgba(0,0,0,0.12)');
+      document.documentElement.style.setProperty('--vscode-descriptionForeground', 'rgba(0,0,0,0.55)');
+      document.documentElement.style.setProperty('--vscode-textLink-foreground', '#2aa88f');
+      document.documentElement.style.setProperty('--vscode-toolbar-hoverBackground', 'rgba(0,0,0,0.08)');
       document.body.style.background = '#e4e9e7';
       document.querySelector('.device')?.classList.add('light');
+    } else {
+      document.documentElement.style.setProperty('--vscode-textCodeBlock-background', '#2b2b2b');
+      document.documentElement.style.setProperty('--vscode-textPreformat-foreground', '#d4d4d4');
+      document.documentElement.style.setProperty('--vscode-editorWidget-background', '#252526');
+      document.documentElement.style.setProperty('--vscode-editorWidget-border', '#3c3c3c');
+      document.documentElement.style.setProperty('--vscode-descriptionForeground', 'rgba(255,255,255,0.55)');
+      document.documentElement.style.setProperty('--vscode-textLink-foreground', '#4ec9b0');
+      document.documentElement.style.setProperty('--vscode-toolbar-hoverBackground', 'rgba(255,255,255,0.08)');
     }
     if (params.has('panel')) {
       const device = document.querySelector('.device');
