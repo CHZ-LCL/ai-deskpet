@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { AssetItem, PetAssets, RendererKind, SoundItem, SoundSlot } from '../../shared/protocol';
+import { L } from '../i18n';
 
 const SLOT_LABELS: Record<SoundSlot, string> = {
   click: '点击桌宠',
@@ -11,15 +12,23 @@ const SLOT_LABELS: Record<SoundSlot, string> = {
   switch: '切换形象',
 };
 
-const SOUND_FILTER: Record<string, string[]> = {
-  '音频文件': ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'],
+const SLOT_LABELS_EN: Record<SoundSlot, string> = {
+  click: 'Pet click',
+  happy: 'Happy / saved',
+  alert: 'Alert / error',
+  error: 'Error',
+  switch: 'Switch avatar',
 };
 
-const MODEL_FILTER: Record<string, string[]> = {
-  'Live2D 模型 (model3.json)': ['json'],
-  '3D 模型 (VRM / GLB / GLTF)': ['vrm', 'glb', 'gltf'],
-  '静态图片 / GIF': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif'],
-};
+const soundFilter = (): Record<string, string[]> => ({
+  [L('音频文件', 'Audio files')]: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'],
+});
+
+const modelFilter = (): Record<string, string[]> => ({
+  [L('Live2D 模型 (model3.json)', 'Live2D model (.model3.json)')]: ['json'],
+  [L('3D 模型 (VRM / GLB / GLTF)', '3D model (VRM / GLB / GLTF)')]: ['vrm', 'glb', 'gltf'],
+  [L('静态图片 / GIF', 'Image / GIF')]: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif'],
+});
 
 interface SoundBindings {
   [slot: string]: string;
@@ -155,7 +164,9 @@ export class AssetStore {
     const items: AssetItem[] = [
       {
         id: 'builtin',
-        name: defaultImage ? '默认形象' : '内置形象 · 小豆',
+        name: defaultImage
+          ? L('默认形象', 'Default avatar')
+          : L('内置形象 · 小豆', 'Built-in avatar · Xiaodou'),
         kind: 'builtin',
         source: 'builtin',
         previewUri: defaultImage ? webview.asWebviewUri(vscode.Uri.file(defaultImage)).toString() : undefined,
@@ -191,7 +202,7 @@ export class AssetStore {
     if (currentAbs && !items.some((item) => item.source === 'user' && item.active)) {
       items.push({
         id: 'configured',
-        name: '当前配置的形象',
+        name: L('当前配置的形象', 'Configured avatar'),
         kind: renderer,
         source: 'workspace',
         active: true,
@@ -234,8 +245,8 @@ export class AssetStore {
       canSelectMany: false,
       canSelectFiles: true,
       canSelectFolders: false,
-      title: '选择桌宠形象（Live2D / 3D / 图片）',
-      filters: MODEL_FILTER,
+      title: L('选择桌宠形象（Live2D / 3D / 图片）', 'Choose an avatar (Live2D / 3D / image)'),
+      filters: modelFilter(),
     });
     const file = picked?.[0];
     if (!file) {
@@ -244,7 +255,7 @@ export class AssetStore {
     const sourcePath = file.fsPath;
     const kind = kindOf(sourcePath);
     if (!kind) {
-      void vscode.window.showErrorMessage('无法识别的文件类型。');
+      void vscode.window.showErrorMessage(L('无法识别的文件类型。', 'Unsupported file type.'));
       return;
     }
 
@@ -263,7 +274,10 @@ export class AssetStore {
         if (stats.files > 800 || stats.bytes > 200 * 1024 * 1024) {
           await fs.rm(folder, { recursive: true, force: true });
           void vscode.window.showErrorMessage(
-            `这个目录太大了（${stats.files} 个文件，约 ${(stats.bytes / 1024 / 1024).toFixed(0)} MB）。请把模型单独放在一个文件夹里再导入。`,
+            L(
+              `这个目录太大了（${stats.files} 个文件，约 ${(stats.bytes / 1024 / 1024).toFixed(0)} MB）。请把模型单独放在一个文件夹里再导入。`,
+              `That folder is too large (${stats.files} files, about ${(stats.bytes / 1024 / 1024).toFixed(0)} MB). Put the model in its own folder and try again.`,
+            ),
           );
           return;
         }
@@ -277,7 +291,12 @@ export class AssetStore {
         });
       }
     } catch (error) {
-      void vscode.window.showErrorMessage(`复制素材失败：${error instanceof Error ? error.message : String(error)}`);
+      void vscode.window.showErrorMessage(
+        L(
+          `复制素材失败：${error instanceof Error ? error.message : String(error)}`,
+          `Could not copy the assets: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
       return;
     }
 
@@ -287,17 +306,25 @@ export class AssetStore {
     await config.update('pet.modelPath', copiedPrimary, vscode.ConfigurationTarget.Global);
 
     if (kind === 'live2d' && !config.get<string>('pet.cubismCorePath', '').trim()) {
-      void vscode.window.showWarningMessage(
-        'Live2D 需要 Live2D 官方的 Cubism Core 文件（live2dcubismcore.min.js）。请从 Live2D 官网下载后，在设置 deskpet.pet.cubismCorePath 中指定路径。',
-        '打开设置',
-      ).then((choice) => {
-        if (choice === '打开设置') {
-          void vscode.commands.executeCommand('workbench.action.openSettings', 'deskpet.pet.cubismCorePath');
-        }
-      });
+      const openSettings = L('打开设置', 'Open settings');
+      void vscode.window
+        .showWarningMessage(
+          L(
+            'Live2D 需要 Live2D 官方的 Cubism Core 文件（live2dcubismcore.min.js）。请从 Live2D 官网下载后，在设置 deskpet.pet.cubismCorePath 中指定路径。',
+            'Live2D needs the official Cubism Core file (live2dcubismcore.min.js). Download it from Live2D and set deskpet.pet.cubismCorePath.',
+          ),
+          openSettings,
+        )
+        .then((choice) => {
+          if (choice === openSettings) {
+            void vscode.commands.executeCommand('workbench.action.openSettings', 'deskpet.pet.cubismCorePath');
+          }
+        });
     }
 
-    void vscode.window.showInformationMessage(`已导入形象：${path.basename(sourcePath)}`);
+    void vscode.window.showInformationMessage(
+      L(`已导入形象：${path.basename(sourcePath)}`, `Avatar imported: ${path.basename(sourcePath)}`),
+    );
   }
 
   async importSound(): Promise<void> {
@@ -305,8 +332,8 @@ export class AssetStore {
       canSelectMany: false,
       canSelectFiles: true,
       canSelectFolders: false,
-      title: '选择音效文件',
-      filters: SOUND_FILTER,
+      title: L('选择音效文件', 'Choose a sound file'),
+      filters: soundFilter(),
     });
     const file = picked?.[0];
     if (!file) {
@@ -317,17 +344,19 @@ export class AssetStore {
     await fs.copyFile(file.fsPath, target);
 
     const slots = Object.entries(SLOT_LABELS).map(([value, label]) => ({
-      label,
+      label: L(label, SLOT_LABELS_EN[value as SoundSlot]),
       description: value,
       value: value as SoundSlot,
     }));
     const slot = await vscode.window.showQuickPick(slots, {
-      title: '把这个音效绑定到哪个场景？',
-      placeHolder: '选择场景',
+      title: L('把这个音效绑定到哪个场景？', 'Which scene should use this sound?'),
+      placeHolder: L('选择场景', 'Choose a scene'),
     });
     if (slot) {
       await this.bindSound(slot.value, target);
-      void vscode.window.showInformationMessage(`已设置「${slot.label}」音效`);
+      void vscode.window.showInformationMessage(
+        L(`已设置「${slot.label}」音效`, `Sound set for “${slot.label}”`),
+      );
     }
   }
 
@@ -371,7 +400,9 @@ export class AssetStore {
     const dir = path.join(this.petsDir.fsPath, id.slice('user:'.length));
     const primary = await findPrimaryModel(dir);
     if (!primary) {
-      void vscode.window.showErrorMessage('这个素材目录里找不到可用模型文件。');
+      void vscode.window.showErrorMessage(
+        L('这个素材目录里找不到可用模型文件。', 'No usable model file was found in that folder.'),
+      );
       return;
     }
     const kind = kindOf(primary);

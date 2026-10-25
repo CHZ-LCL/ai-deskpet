@@ -4,6 +4,7 @@ import {
   type PackId,
   type Severity,
 } from './rules';
+import { isEnglish, L } from '../i18n';
 
 export interface Finding {
   ruleId: string;
@@ -405,12 +406,17 @@ export function scanCode(
 /** 给提示词用的紧凑清单。 */
 export function formatFindings(findings: Finding[]): string {
   if (!findings.length) {
-    return '（本地扫描没有发现明显问题）';
+    return L('（本地扫描没有发现明显问题）', '(the local scan found no obvious issues)');
   }
-  const label = { high: '高', medium: '中', low: '低' } as const;
+  const label = isEnglish()
+    ? ({ high: 'high', medium: 'medium', low: 'low' } as const)
+    : ({ high: '高', medium: '中', low: '低' } as const);
   return findings
     .slice(0, 20)
-    .map((item) => `- [${label[item.severity]}] L${item.line} ${item.ruleId}：${item.title} → ${item.advice}`)
+    .map(
+      (item) =>
+        `- [${label[item.severity]}] L${item.line} ${item.ruleId}${L('：', ': ')}${item.title} → ${item.advice}`,
+    )
     .join('\n');
 }
 

@@ -121,7 +121,7 @@ The panel follows the VS Code display language by default. To force a language:
 | --- | --- | --- |
 | `deskpet.ui.language` | `auto` (default) / `zh` / `en` | Panel language and the language the AI answers in |
 
-- The command palette, settings, and panel copy are localized (English / Simplified Chinese).
+- The command palette, settings, panel copy, modal dialogs, quick picks, status-bar messages, and inline comment threads are localized (English / Simplified Chinese).
 - With `en`, the system prompt switches to English so answers are written in English.
 - Required structured markers such as `【问题】` stay in the prompt for reliable parsing; the prose is English.
 
@@ -435,7 +435,6 @@ npx vsce publish
 - Local models load slowly and have limited context; older turns are truncated.
 - 3D may drop frames on integrated GPUs; reduce the avatar scale.
 - Docs fetching is subject to anti-bot protection and CSP; some pages fall back to search snippets.
-- VS Code dialogs opened by individual commands (quick picks, confirmation prompts) are being localized; the panel, command palette, settings, and AI replies are already bilingual.
 
 ---
 

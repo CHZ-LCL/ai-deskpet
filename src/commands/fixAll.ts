@@ -52,7 +52,12 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
   if (document.lineCount > maxLines || before.length > maxChars) {
     host.say(
       L(`文件有点大（${document.lineCount} 行），当前上限是 ${maxLines} 行 / ${maxChars} 字符。`, `This file is large (${document.lineCount} lines); the current limit is ${maxLines} lines / ${maxChars} characters.`) +
-        (verified ? '建议用问题清单逐条修复。' : '先运行「验证模型的全文修改能力」可以放宽到 1200 行。'),
+        (verified
+          ? L('建议用问题清单逐条修复。', 'Fix them one by one from the Problems list.')
+          : L(
+              '先运行「验证模型的全文修改能力」可以放宽到 1200 行。',
+              'Run “Verify the model’s full-file capability” to raise the limit to 1200 lines.',
+            )),
       { action: 'think' },
     );
     return;
@@ -68,7 +73,10 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
     .join('\n');
 
   const reply = await host.prompt(
-    `一键修复 ${relative}（${diagnostics.length} 处错误）`,
+    L(
+      `一键修复 ${relative}（${diagnostics.length} 处错误）`,
+      `Fix ${relative} (${diagnostics.length} errors)`,
+    ),
     fixAllPrompt({
       file: relative,
       languageId: document.languageId,
@@ -85,7 +93,7 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
   if (!isFullFileRewrite(before, code)) {
     host.notice(L('模型没有返回完整文件，改为给出补丁卡片，避免误删代码。', `The model did not return the full file, so I’ll show a patch card instead to avoid deleting code.`), 'warn');
     const range = await enclosingRange(document, diagnostics[0].range.start.line);
-    await presentPatch(host, document, snippetFromRange(document, range), reply, '报错修复', {
+    await presentPatch(host, document, snippetFromRange(document, range), reply, L('报错修复', 'Error fix'), {
       autoDiff: true,
     });
     return;
@@ -104,7 +112,7 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
     document.uri,
     before,
     after,
-    `一键修复 ${diagnostics.length} 处错误`,
+    L(`一键修复 ${diagnostics.length} 处错误`, `Fix all (${diagnostics.length} errors)`),
   );
 
   try {
@@ -121,9 +129,14 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
     return;
   }
 
-  const actions = meta ? ['撤销', '查看差异'] : [];
+  const undoLabel = L('撤销', 'Undo');
+  const diffLabel = L('查看差异', 'View diff');
+  const actions = meta ? [undoLabel, diffLabel] : [];
   const choice = await vscode.window.showInformationMessage(
-    `已一键修复 ${diagnostics.length} 处错误，验证通过`,
+    L(
+      `已一键修复 ${diagnostics.length} 处错误，验证通过`,
+      `Fixed ${diagnostics.length} errors — verification passed`,
+    ),
     ...actions,
   );
 
@@ -131,11 +144,11 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
   if (!meta || !history) {
     return;
   }
-  if (choice === '撤销') {
+  if (choice === undoLabel) {
     if (await restoreFix(history, meta.id)) {
-      vscode.window.setStatusBarMessage('已撤销一键修复', 3000);
+      vscode.window.setStatusBarMessage(L('已撤销一键修复', 'Fix-all undone'), 3000);
     }
-  } else if (choice === '查看差异') {
+  } else if (choice === diffLabel) {
     await showFixDiff(history, meta.id);
   }
 }

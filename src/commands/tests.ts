@@ -41,7 +41,10 @@ async function generateTests(host: PetHost): Promise<void> {
 
   await focusPet();
   const reply = await host.prompt(
-    `为 ${snippet.relativePath} 生成测试（${framework.label}）`,
+    L(
+      `为 ${snippet.relativePath} 生成测试（${framework.label}）`,
+      `Generate tests for ${snippet.relativePath} (${framework.label})`,
+    ),
     testsPrompt({
       file: snippet.relativePath,
       languageId: document.languageId,
@@ -75,10 +78,13 @@ async function generateTests(host: PetHost): Promise<void> {
     const testDocument = await vscode.workspace.openTextDocument(existing);
     const end = new vscode.Position(testDocument.lineCount, 0);
     const wrapper = [
-      '【问题】现有测试没有覆盖这个函数的关键分支',
-      '【原因】缺少边界与异常用例，后续改动容易回归',
-      `【方案】${plan.length ? plan.join('\n') : '新增正常 / 边界 / 异常用例'}`,
-      '【影响】只新增测试代码，不改产品逻辑',
+      L('【问题】现有测试没有覆盖这个函数的关键分支', '【问题】The existing tests do not cover the key branches of this function'),
+      L('【原因】缺少边界与异常用例，后续改动容易回归', '【原因】Boundary and error cases are missing, so later changes can regress'),
+      L(
+        `【方案】${plan.length ? plan.join('\n') : '新增正常 / 边界 / 异常用例'}`,
+        `【方案】${plan.length ? plan.join('\n') : 'Add happy-path, boundary, and error cases'}`,
+      ),
+      L('【影响】只新增测试代码，不改产品逻辑', '【影响】Adds tests only; no production logic changes'),
       '',
       '```' + testLanguage,
       code,
@@ -90,7 +96,7 @@ async function generateTests(host: PetHost): Promise<void> {
       testDocument,
       snippetFromRange(testDocument, new vscode.Range(end, end)),
       wrapper,
-      '补充测试',
+      L('补充测试', 'Add tests'),
       { autoDiff: true },
     );
     return;
@@ -101,13 +107,18 @@ async function generateTests(host: PetHost): Promise<void> {
   await vscode.window.showTextDocument(preview, { preview: false });
 
   const folders = vscode.workspace.workspaceFolders;
-  const items = folders?.length ? ['创建文件', '仅预览'] : ['仅预览'];
+  const createLabel = L('创建文件', 'Create file');
+  const previewLabel = L('仅预览', 'Preview only');
+  const items = folders?.length ? [createLabel, previewLabel] : [previewLabel];
   const choice = await vscode.window.showInformationMessage(
-    `测试已生成（${framework.label}），建议保存为 ${suggested}`,
+    L(
+      `测试已生成（${framework.label}），建议保存为 ${suggested}`,
+      `Tests generated (${framework.label}); suggested path: ${suggested}`,
+    ),
     ...items,
   );
 
-  if (choice === '创建文件' && folders?.length) {
+  if (choice === createLabel && folders?.length) {
     const target = vscode.Uri.joinPath(folders[0].uri, suggested);
     try {
       await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(code));
@@ -117,7 +128,10 @@ async function generateTests(host: PetHost): Promise<void> {
       host.say(L(`测试写好了：${suggested}`, `Tests are ready: ${suggested}`), { action: 'happy' });
     } catch (error) {
       void vscode.window.showErrorMessage(
-        `创建测试文件失败：${error instanceof Error ? error.message : String(error)}`,
+        L(
+          `创建测试文件失败：${error instanceof Error ? error.message : String(error)}`,
+          `Could not create the test file: ${error instanceof Error ? error.message : String(error)}`,
+        ),
       );
     }
   }

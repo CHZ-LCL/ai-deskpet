@@ -55,8 +55,8 @@ async function exportTheme(host: PetHost, context: vscode.ExtensionContext): Pro
   const base = vscode.workspace.workspaceFolders?.[0]?.uri ?? context.globalStorageUri;
   const target = await vscode.window.showSaveDialog({
     defaultUri: vscode.Uri.joinPath(base, 'deskpet-theme.json'),
-    filters: { '桌宠主题': ['json'] },
-    title: '导出桌宠主题',
+    filters: { [L('桌宠主题', 'DeskPet theme')]: ['json'] },
+    title: L('导出桌宠主题', 'Export DeskPet theme'),
   });
   if (!target) {
     return;
@@ -69,8 +69,8 @@ async function exportTheme(host: PetHost, context: vscode.ExtensionContext): Pro
 async function importTheme(host: PetHost): Promise<void> {
   const picked = await vscode.window.showOpenDialog({
     canSelectMany: false,
-    filters: { '桌宠主题': ['json'] },
-    title: '导入桌宠主题',
+    filters: { [L('桌宠主题', 'DeskPet theme')]: ['json'] },
+    title: L('导入桌宠主题', 'Import DeskPet theme'),
   });
   const uri = picked?.[0];
   if (!uri) {
@@ -82,28 +82,39 @@ async function importTheme(host: PetHost): Promise<void> {
     text = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
   } catch (error) {
     void vscode.window.showErrorMessage(
-      `读取主题文件失败：${error instanceof Error ? error.message : String(error)}`,
+      L(
+        `读取主题文件失败：${error instanceof Error ? error.message : String(error)}`,
+        `Could not read the theme file: ${error instanceof Error ? error.message : String(error)}`,
+      ),
     );
     return;
   }
 
   const parsed = parseThemeFile(text);
   if (!parsed.ok) {
-    void vscode.window.showErrorMessage(`主题文件无效：${parsed.error}`);
+    void vscode.window.showErrorMessage(
+      L(`主题文件无效：${parsed.error}`, `Invalid theme file: ${parsed.error}`),
+    );
     return;
   }
 
   const hasWorkspace = Boolean(vscode.workspace.workspaceFolders?.length);
   const scope = await vscode.window.showQuickPick(
     [
-      { label: '应用到全局', description: '所有工作区生效', target: vscode.ConfigurationTarget.Global },
       {
-        label: '仅当前工作区',
-        description: hasWorkspace ? '写入 .vscode/settings.json 级别' : '当前未打开工作区，不可用',
+        label: L('应用到全局', 'Apply globally'),
+        description: L('所有工作区生效', 'Takes effect in every workspace'),
+        target: vscode.ConfigurationTarget.Global,
+      },
+      {
+        label: L('仅当前工作区', 'This workspace only'),
+        description: hasWorkspace
+          ? L('写入 .vscode/settings.json 级别', 'Written at .vscode/settings.json level')
+          : L('当前未打开工作区，不可用', 'No workspace is open, so this is unavailable'),
         target: vscode.ConfigurationTarget.Workspace,
       },
     ].filter((item) => item.target !== vscode.ConfigurationTarget.Workspace || hasWorkspace),
-    { title: '主题应用到哪？' },
+    { title: L('主题应用到哪？', 'Where should the theme apply?') },
   );
   if (!scope) {
     return;
@@ -133,12 +144,16 @@ async function clearWorkspaceTheme(host: PetHost): Promise<void> {
     return;
   }
 
+  const clearLabel = L('清除', 'Clear');
   const confirmed = await vscode.window.showWarningMessage(
-    '清除当前工作区的主题覆盖，恢复使用全局设置？',
+    L(
+      '清除当前工作区的主题覆盖，恢复使用全局设置？',
+      'Clear this workspace’s theme override and go back to the global settings?',
+    ),
     { modal: true },
-    '清除',
+    clearLabel,
   );
-  if (confirmed !== '清除') {
+  if (confirmed !== clearLabel) {
     return;
   }
 

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { resourceRoots } from '../config';
+import { L } from '../i18n';
 import { renderWebviewHtml } from './html';
 import type { PetHost } from './host';
 
@@ -17,7 +18,7 @@ export class PetPanel {
 
     const panel = vscode.window.createWebviewPanel(
       'deskpet.panel',
-      '桌宠 · DeskPet',
+      L('桌宠 · DeskPet', 'DeskPet'),
       { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
       {
         enableScripts: true,

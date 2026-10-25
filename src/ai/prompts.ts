@@ -1,4 +1,5 @@
 import type { PetTone, ReplyLength } from '../../shared/protocol';
+import { isEnglish } from '../i18n';
 
 export interface PersonaOptions {
   name: string;
@@ -127,6 +128,16 @@ export const TEACH_DEPTH_LABEL: Record<TeachDepth, string> = {
   logic: '逻辑梳理',
   design: '设计思路',
 };
+
+const TEACH_DEPTH_LABEL_EN: Record<TeachDepth, string> = {
+  line: 'line by line',
+  logic: 'logic walkthrough',
+  design: 'design notes',
+};
+
+export function teachDepthLabel(depth: TeachDepth): string {
+  return isEnglish() ? TEACH_DEPTH_LABEL_EN[depth] : TEACH_DEPTH_LABEL[depth];
+}
 
 /**
  * “一对一老师”模式：按深度把一段代码讲透。

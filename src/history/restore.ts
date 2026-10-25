@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { showProposedDiff } from '../commands/diff';
+import { L } from '../i18n';
 import type { FixHistory } from './fixHistory';
 
 /** 把文件恢复成这条历史记录里的 before 版本。 */
@@ -10,7 +11,9 @@ export async function restoreFix(
 ): Promise<boolean> {
   const entry = await history.get(id);
   if (!entry) {
-    await vscode.window.showWarningMessage('这条修改历史已经失效。');
+    await vscode.window.showWarningMessage(
+      L('这条修改历史已经失效。', 'This edit history entry is no longer valid.'),
+    );
     return false;
   }
 
@@ -21,12 +24,16 @@ export async function restoreFix(
     if (!options.confirmStale) {
       return false;
     }
+    const restoreLabel = L('仍然回退', 'Restore anyway');
     const ok = await vscode.window.showWarningMessage(
-      '文件在这之后又被修改过，回退会覆盖这些改动，确定吗？',
+      L(
+        '文件在这之后又被修改过，回退会覆盖这些改动，确定吗？',
+        'The file has changed since this edit. Restoring will overwrite those changes. Continue?',
+      ),
       { modal: true },
-      '仍然回退',
+      restoreLabel,
     );
-    if (ok !== '仍然回退') {
+    if (ok !== restoreLabel) {
       return false;
     }
   }
@@ -35,7 +42,7 @@ export async function restoreFix(
   const edit = new vscode.WorkspaceEdit();
   edit.replace(document.uri, full, entry.before);
   if (!(await vscode.workspace.applyEdit(edit))) {
-    await vscode.window.showWarningMessage('回退失败，请重试。');
+    await vscode.window.showWarningMessage(L('回退失败，请重试。', 'Restore failed — please try again.'));
     return false;
   }
 
@@ -51,11 +58,13 @@ export async function restoreFix(
 export async function showFixDiff(history: FixHistory, id: string): Promise<void> {
   const entry = await history.get(id);
   if (!entry) {
-    await vscode.window.showWarningMessage('这条修改历史已经失效。');
+    await vscode.window.showWarningMessage(
+      L('这条修改历史已经失效。', 'This edit history entry is no longer valid.'),
+    );
     return;
   }
 
   const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(entry.uri));
   const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
-  await showProposedDiff(document, fullRange, entry.before, '回退预览');
+  await showProposedDiff(document, fullRange, entry.before, L('回退预览', 'Restore preview'));
 }

@@ -56,7 +56,12 @@ async function reviewRules(host: PetHost): Promise<void> {
   const counts = countBySeverity(findings);
   host.notice(
     L(`规范扫描：高 ${counts.high} · 中 ${counts.medium} · 低 ${counts.low}`, `Standards scan: high ${counts.high} · medium ${counts.medium} · low ${counts.low}`) +
-      (hasSelection ? `（选中 ${scanRange.start.line + 1}-${scanRange.end.line + 1} 行）` : ''),
+      (hasSelection
+        ? L(
+            `（选中 ${scanRange.start.line + 1}-${scanRange.end.line + 1} 行）`,
+            ` (selection: lines ${scanRange.start.line + 1}-${scanRange.end.line + 1})`,
+          )
+        : ''),
   );
 
   await focusPet();
@@ -66,19 +71,22 @@ async function reviewRules(host: PetHost): Promise<void> {
   const snippet = snippetFromRange(document, target);
 
   const reply = await host.prompt(
-    `规范检查 ${relative}：${findings.length} 处线索`,
+    L(
+      `规范检查 ${relative}：${findings.length} 处线索`,
+      `Standards check for ${relative}: ${findings.length} findings`,
+    ),
     rulesPrompt(
       relative,
       document.languageId,
       formatFindings(findings),
       snippet.code,
-      hasSelection ? '选中片段' : '当前文件',
+      hasSelection ? L('选中片段', 'the selection') : L('当前文件', 'the current file'),
     ),
     { action: 'think' },
   );
 
   if (reply.trim()) {
-    await presentPatch(host, document, snippet, reply, '规范整改', { autoDiff: true });
+    await presentPatch(host, document, snippet, reply, L('规范整改', 'Standards fix'), { autoDiff: true });
   }
 }
 
@@ -105,17 +113,29 @@ async function modernize(host: PetHost): Promise<void> {
 
   await focusPet();
   const reply = await host.prompt(
-    `现代化重构 ${snippet.relativePath}（${findings.length} 处线索）`,
+    L(
+      `现代化重构 ${snippet.relativePath}（${findings.length} 处线索）`,
+      `Modernize ${snippet.relativePath} (${findings.length} findings)`,
+    ),
     [
       refactorPrompt(
         snippet.languageId,
-        '改用更现代、更简洁、性能更好的写法，同时保持行为不变，并遵守团队规范',
+        L(
+          '改用更现代、更简洁、性能更好的写法，同时保持行为不变，并遵守团队规范',
+          'more modern, simpler, and faster while keeping behavior unchanged and following team standards',
+        ),
       ),
       '',
-      `本地扫描线索（高 ${counts.high} / 中 ${counts.medium} / 低 ${counts.low}）：`,
+      L(
+        `本地扫描线索（高 ${counts.high} / 中 ${counts.medium} / 低 ${counts.low}）：`,
+        `Local scan findings (high ${counts.high} / medium ${counts.medium} / low ${counts.low}):`,
+      ),
       formatFindings(findings),
       '',
-      `代码（第 ${snippet.startLine}-${snippet.endLine} 行，整段替换）：`,
+      L(
+        `代码（第 ${snippet.startLine}-${snippet.endLine} 行，整段替换）：`,
+        `Code (lines ${snippet.startLine}-${snippet.endLine}, replace the whole block):`,
+      ),
       '```' + snippet.languageId,
       snippet.code,
       '```',
@@ -124,6 +144,6 @@ async function modernize(host: PetHost): Promise<void> {
   );
 
   if (reply.trim()) {
-    await presentPatch(host, document, snippet, reply, '现代化重构', { autoDiff: true });
+    await presentPatch(host, document, snippet, reply, L('现代化重构', 'Modernization'), { autoDiff: true });
   }
 }

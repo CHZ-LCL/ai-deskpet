@@ -44,7 +44,9 @@ async function generateDocs(host: PetHost, line?: number): Promise<void> {
 
   await focusPet();
   const reply = await host.prompt(
-    `为 ${symbol.name} ${existing ? '扩写' : '补'}文档`,
+    existing
+      ? L(`为 ${symbol.name} 扩写文档`, `Expand the docs for ${symbol.name}`)
+      : L(`为 ${symbol.name} 补文档`, `Add docs for ${symbol.name}`),
     documentationPrompt({
       file: snippet.relativePath,
       languageId: document.languageId,
@@ -56,9 +58,16 @@ async function generateDocs(host: PetHost, line?: number): Promise<void> {
   );
 
   if (reply.trim()) {
-    await presentPatch(host, document, snippet, reply, existing ? '文档扩写' : '文档注释', {
-      autoDiff: true,
-    });
+    await presentPatch(
+      host,
+      document,
+      snippet,
+      reply,
+      existing ? L('文档扩写', 'Docs expansion') : L('文档注释', 'Doc comments'),
+      {
+        autoDiff: true,
+      },
+    );
   }
 }
 
@@ -82,14 +91,21 @@ async function checkDocs(host: PetHost): Promise<void> {
     drift.map((item) => ({
       label: `L${item.line}  ${item.name}`,
       description: [
-        item.missing.length ? `缺少：${item.missing.join('、')}` : '',
-        item.extra.length ? `多余：${item.extra.join('、')}` : '',
+        item.missing.length
+          ? L(`缺少：${item.missing.join('、')}`, `missing: ${item.missing.join(', ')}`)
+          : '',
+        item.extra.length
+          ? L(`多余：${item.extra.join('、')}`, `extra: ${item.extra.join(', ')}`)
+          : '',
       ]
         .filter(Boolean)
-        .join('；'),
+        .join(L('；', '; ')),
       line: item.line,
     })),
-    { title: '要补哪一处文档？', placeHolder: '选中后会生成注释并给出 diff' },
+    {
+      title: L('要补哪一处文档？', 'Which doc comment should be updated?'),
+      placeHolder: L('选中后会生成注释并给出 diff', 'A comment will be generated with a diff'),
+    },
   );
 
   if (picked) {

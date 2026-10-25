@@ -24,10 +24,14 @@ async function checkCapability(host: PetHost, context: vscode.ExtensionContext):
   const label = `${record.model}${record.passed ? '' : `：${record.notes}`}`;
   if (record.passed) {
     host.say(L(`模型通过整文件改写验证（${label}），现在可以放心用全文修改了。`, `The model passed the full-file check (${label}); full-file rewrites are safe to use now.`), { action: 'happy' });
-    void vscode.window.showInformationMessage(`整文件改写能力验证通过：${label}`);
+    void vscode.window.showInformationMessage(
+      L(`整文件改写能力验证通过：${label}`, `Full-file capability check passed: ${label}`),
+    );
   } else {
     host.say(L('这个模型的整文件改写还不稳定，先用逐条修复更安全。', `This model is not stable at full-file rewrites yet. Targeted fixes are safer for now.`), { action: 'think' });
-    void vscode.window.showWarningMessage(`整文件改写验证未通过：${label}`);
+    void vscode.window.showWarningMessage(
+      L(`整文件改写验证未通过：${label}`, `Full-file capability check failed: ${label}`),
+    );
   }
 }
 
@@ -46,9 +50,15 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
   const settings = await readAiSettings(context);
 
   const instruction = await vscode.window.showInputBox({
-    title: '全文修改当前文件',
-    prompt: '想怎么改？会重写整个文件，并先给你看 diff',
-    placeHolder: '例如：把所有回调改成 async/await，保持行为不变',
+    title: L('全文修改当前文件', 'Rewrite the current file'),
+    prompt: L(
+      '想怎么改？会重写整个文件，并先给你看 diff',
+      'What should change? The whole file will be rewritten and shown as a diff first.',
+    ),
+    placeHolder: L(
+      '例如：把所有回调改成 async/await，保持行为不变',
+      'e.g. convert all callbacks to async/await without changing behavior',
+    ),
     ignoreFocusOut: true,
   });
   if (!instruction?.trim()) {
@@ -59,12 +69,16 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
   const verified = record?.passed === true && capabilityMatches(record, settings);
 
   if (!verified) {
+    const verifyLabel = L('验证并继续', 'Verify and continue');
     const choice = await vscode.window.showInformationMessage(
-      '还没验证过这个模型的整文件改写能力，要先跑一次小测试吗？',
-      '验证并继续',
-      '取消',
+      L(
+        '还没验证过这个模型的整文件改写能力，要先跑一次小测试吗？',
+        'This model has not been checked for full-file rewrites yet. Run the quick test first?',
+      ),
+      verifyLabel,
+      L('取消', 'Cancel'),
     );
-    if (choice !== '验证并继续') {
+    if (choice !== verifyLabel) {
       return;
     }
     const result = await checkFullFileCapability(context);
@@ -87,12 +101,16 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
   }
 
   if (document.lineCount > 500) {
+    const continueLabel = L('继续', 'Continue');
     const ok = await vscode.window.showWarningMessage(
-      `这个文件有 ${document.lineCount} 行，全文重写会消耗较多 token 且可能变慢，继续吗？`,
+      L(
+        `这个文件有 ${document.lineCount} 行，全文重写会消耗较多 token 且可能变慢，继续吗？`,
+        `This file has ${document.lineCount} lines. A full rewrite uses more tokens and may be slower. Continue?`,
+      ),
       { modal: true },
-      '继续',
+      continueLabel,
     );
-    if (ok !== '继续') {
+    if (ok !== continueLabel) {
       return;
     }
   }
@@ -100,7 +118,10 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
   await focusPet();
   const relative = vscode.workspace.asRelativePath(document.uri, false);
   const reply = await host.prompt(
-    `全文修改 ${relative}（${instruction.trim().slice(0, 40)}）`,
+    L(
+      `全文修改 ${relative}（${instruction.trim().slice(0, 40)}）`,
+      `Rewrite ${relative} (${instruction.trim().slice(0, 40)})`,
+    ),
     rewritePrompt({
       file: relative,
       languageId: document.languageId,
@@ -124,7 +145,7 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
   }
 
   const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(before.length));
-  await presentPatch(host, document, snippetFromRange(document, fullRange), reply, '全文修改', {
+  await presentPatch(host, document, snippetFromRange(document, fullRange), reply, L('全文修改', 'Full-file rewrite'), {
     autoDiff: true,
   });
 }

@@ -45,22 +45,30 @@ async function showHistory(host: PetHost): Promise<void> {
         id: meta.id,
       };
     }),
-    { title: 'AI 修改历史（最近 30 条）', placeHolder: '选中一条可回退到修改前' },
+    {
+      title: L('AI 修改历史（最近 30 条）', 'AI edit history (last 30)'),
+      placeHolder: L('选中一条可回退到修改前', 'Pick an entry to restore the version before it'),
+    },
   );
   if (!picked) {
     return;
   }
 
+  const undoLabel = L('回退', 'Restore');
+  const diffLabel = L('查看差异', 'View diff');
   const choice = await vscode.window.showInformationMessage(
-    `要回退到「${picked.description}」之前吗？`,
-    '回退',
-    '查看差异',
+    L(
+      `要回退到「${picked.description}」之前吗？`,
+      `Restore the version before “${picked.description}”?`,
+    ),
+    undoLabel,
+    diffLabel,
   );
-  if (choice === '回退') {
+  if (choice === undoLabel) {
     if (await restoreFix(history, picked.id)) {
       host.say(L('已回退。', `Undone.`), { action: 'shy' });
     }
-  } else if (choice === '查看差异') {
+  } else if (choice === diffLabel) {
     await showFixDiff(history, picked.id);
   }
 }

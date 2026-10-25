@@ -13,7 +13,7 @@ import {
   explainPrompt,
   fixPrompt,
   refactorPrompt,
-  TEACH_DEPTH_LABEL,
+  teachDepthLabel,
   teachPrompt,
   type TeachDepth,
 } from '../ai/prompts';
@@ -55,8 +55,11 @@ async function explain(host: PetHost): Promise<void> {
   }
   await focusPet();
   const label = snippet.hasSelection
-    ? `讲解 ${snippet.relativePath} 第 ${snippet.startLine}-${snippet.endLine} 行`
-    : `讲解 ${snippet.relativePath} 附近的代码`;
+    ? L(
+        `讲解 ${snippet.relativePath} 第 ${snippet.startLine}-${snippet.endLine} 行`,
+        `Explain ${snippet.relativePath} lines ${snippet.startLine}-${snippet.endLine}`,
+      )
+    : L(`讲解 ${snippet.relativePath} 附近的代码`, `Explain the code near ${snippet.relativePath}`);
   await host.prompt(
     label,
     `${explainPrompt(snippet.languageId, snippet.relativePath)}\n\n${formatSnippet(snippet)}`,
@@ -76,15 +79,20 @@ async function fix(host: PetHost): Promise<void> {
 
   const diagnostics = snippet.diagnostics.join('\n');
   const scope = snippet.hasSelection
-    ? `${snippet.relativePath} 第 ${snippet.startLine}-${snippet.endLine} 行`
-    : `${snippet.relativePath} 附近`;
+    ? L(
+        `${snippet.relativePath} 第 ${snippet.startLine}-${snippet.endLine} 行`,
+        `${snippet.relativePath}, lines ${snippet.startLine}-${snippet.endLine}`,
+      )
+    : L(`${snippet.relativePath} 附近`, `near ${snippet.relativePath}`);
   const reply = await host.prompt(
-    `帮我看看 ${scope}${diagnostics ? '（有报错）' : ''}`,
+    diagnostics
+      ? L(`帮我看看 ${scope}（有报错）`, `Take a look at ${scope} (it has errors)`)
+      : L(`帮我看看 ${scope}`, `Take a look at ${scope}`),
     `${fixPrompt(snippet.languageId, snippet.relativePath, diagnostics)}\n\n${formatSnippet(snippet)}`,
     { action: 'think' },
   );
   if (reply.trim()) {
-    await offerReplacement(host, editor, snippet, reply, '修复建议');
+    await offerReplacement(host, editor, snippet, reply, L('修复建议', 'Suggested fix'));
   }
 }
 
@@ -97,21 +105,24 @@ async function refactor(host: PetHost): Promise<void> {
     return;
   }
   const goal = await vscode.window.showInputBox({
-    title: '重构目标（可留空）',
-    placeHolder: '例如：拆成小函数、去掉重复逻辑、改用 async/await',
-    prompt: '桌宠会按这个目标重写选中代码',
+    title: L('重构目标（可留空）', 'Refactor goal (optional)'),
+    placeHolder: L(
+      '例如：拆成小函数、去掉重复逻辑、改用 async/await',
+      'e.g. split into functions, remove duplication, switch to async/await',
+    ),
+    prompt: L('桌宠会按这个目标重写选中代码', 'DeskPet will rewrite the selection toward this goal'),
   });
   if (goal === undefined) {
     return;
   }
   await focusPet();
   const reply = await host.prompt(
-    `重构 ${snippet.relativePath}（${goal || '更清晰'}）`,
+    L(`重构 ${snippet.relativePath}（${goal || '更清晰'}）`, `Refactor ${snippet.relativePath} (${goal || 'cleaner'})`),
     `${refactorPrompt(snippet.languageId, goal)}\n\n${formatSnippet(snippet)}`,
     { action: 'think' },
   );
   if (reply.trim()) {
-    await offerReplacement(host, editor, snippet, reply, '重构建议');
+    await offerReplacement(host, editor, snippet, reply, L('重构建议', 'Refactor suggestion'));
   }
 }
 
@@ -131,7 +142,11 @@ async function teach(host: PetHost): Promise<void> {
 
   await focusPet();
   const references = await referenceSummary(editor);
-  const label = `讲透 ${snippet.relativePath}（${TEACH_DEPTH_LABEL[depth]}）`;
+  const depthLabel = teachDepthLabel(depth);
+  const label = L(
+    `讲透 ${snippet.relativePath}（${depthLabel}）`,
+    `Teach ${snippet.relativePath} (${depthLabel})`,
+  );
   await host.prompt(
     label,
     [
@@ -147,15 +162,27 @@ async function pickTeachDepth(): Promise<TeachDepth | undefined> {
   const config = vscode.workspace.getConfiguration('deskpet');
   const preferred = config.get<TeachDepth>('teach.depth', 'line');
   const items: Array<vscode.QuickPickItem & { value: TeachDepth }> = [
-    { label: '$(list-ordered) 逐行讲解', description: '按行号讲清每一行在做什么', value: 'line' },
-    { label: '$(git-branch) 逻辑梳理', description: '按执行顺序拆步骤、标出副作用', value: 'logic' },
-    { label: '$(lightbulb) 设计思路', description: '为什么这样设计、以后怎么扩展', value: 'design' },
+    {
+      label: L('$(list-ordered) 逐行讲解', '$(list-ordered) Line by line'),
+      description: L('按行号讲清每一行在做什么', 'Explain what each line does, by line number'),
+      value: 'line',
+    },
+    {
+      label: L('$(git-branch) 逻辑梳理', '$(git-branch) Logic walkthrough'),
+      description: L('按执行顺序拆步骤、标出副作用', 'Steps in execution order, with side effects called out'),
+      value: 'logic',
+    },
+    {
+      label: L('$(lightbulb) 设计思路', '$(lightbulb) Design notes'),
+      description: L('为什么这样设计、以后怎么扩展', 'Why it is designed this way and how to extend it'),
+      value: 'design',
+    },
   ];
   items.sort((left, right) => (left.value === preferred ? -1 : right.value === preferred ? 1 : 0));
 
   const picked = await vscode.window.showQuickPick(items, {
-    title: '想怎么听？',
-    placeHolder: '桌宠会按这个深度讲解选中代码',
+    title: L('想怎么听？', 'How do you want it explained?'),
+    placeHolder: L('桌宠会按这个深度讲解选中代码', 'DeskPet will use this depth for the selection'),
   });
   return picked?.value;
 }
@@ -237,10 +264,13 @@ export async function presentPatch(
     file: vscode.workspace.asRelativePath(document.uri, false),
     startLine: snippet.startLine,
     endLine: snippet.endLine,
-    problem: parsed.problem || '模型没有给出问题描述。',
+    problem: parsed.problem || L('模型没有给出问题描述。', 'The model did not describe the problem.'),
     cause: parsed.cause,
     plan: parsed.plan,
-    impact: [parsed.impact, styleNotes.length ? `风格提醒：${styleNotes.join('；')}` : '']
+    impact: [
+      parsed.impact,
+      styleNotes.length ? `${L('风格提醒', 'Style note')}：${styleNotes.join(L('；', '; '))}` : '',
+    ]
       .filter(Boolean)
       .join('\n'),
   };
@@ -375,7 +405,7 @@ async function commitMessage(host: PetHost): Promise<void> {
 
   await focusPet();
   const reply = await host.prompt(
-    '帮我写一条 Git 提交信息',
+    L('帮我写一条 Git 提交信息', 'Write a Git commit message for me'),
     commitPrompt(truncate(diff, 14_000), branch),
     { action: 'think' },
   );
@@ -389,14 +419,19 @@ async function commitMessage(host: PetHost): Promise<void> {
   }
 
   await vscode.env.clipboard.writeText(message);
+  const fillLabel = L('填入 Git 提交框', 'Fill the Git input box');
+  const copyLabel = L('复制全文', 'Copy full message');
   const action = await vscode.window.showInformationMessage(
-    `提交信息已复制：${message.split('\n')[0]}`,
-    '填入 Git 提交框',
-    '复制全文',
+    L(
+      `提交信息已复制：${message.split('\n')[0]}`,
+      `Commit message copied: ${message.split('\n')[0]}`,
+    ),
+    fillLabel,
+    copyLabel,
   );
-  if (action === '填入 Git 提交框') {
+  if (action === fillLabel) {
     await fillScmInput(message);
-  } else if (action === '复制全文') {
+  } else if (action === copyLabel) {
     await vscode.env.clipboard.writeText(message);
   }
 }

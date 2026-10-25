@@ -48,7 +48,10 @@ async function explainDiagnostic(host: PetHost, line?: number): Promise<void> {
   const range = await enclosingRange(editor.document, targetLine - 1);
   const snippet = snippetFromRange(editor.document, range, picked.map(describeDiagnostic));
   await host.prompt(
-    `解释 ${snippet.relativePath} 第 ${targetLine} 行的报错`,
+    L(
+      `解释 ${snippet.relativePath} 第 ${targetLine} 行的报错`,
+      `Explain the error at ${snippet.relativePath}:${targetLine}`,
+    ),
     diagnosticPrompt(picked.map(toPromptDiagnostic), toPromptSnippet(snippet)),
     { action: 'think' },
   );
@@ -72,11 +75,17 @@ async function fixDiagnostic(host: PetHost, line?: number): Promise<void> {
   const range = await enclosingRange(editor.document, targetLine - 1);
   const snippet = snippetFromRange(editor.document, range, picked.map(describeDiagnostic));
   const reply = await host.prompt(
-    `修 ${snippet.relativePath} 第 ${targetLine} 行的报错`,
+    L(
+      `修 ${snippet.relativePath} 第 ${targetLine} 行的报错`,
+      `Fix the error at ${snippet.relativePath}:${targetLine}`,
+    ),
     [
       fixPrompt(snippet.languageId, snippet.relativePath, picked.map(describeDiagnostic).join('\n')),
       '',
-      `代码（第 ${snippet.startLine}-${snippet.endLine} 行，整段替换）：`,
+      L(
+        `代码（第 ${snippet.startLine}-${snippet.endLine} 行，整段替换）：`,
+        `Code (lines ${snippet.startLine}-${snippet.endLine}, replace the whole block):`,
+      ),
       '```' + snippet.languageId,
       snippet.code,
       '```',
@@ -85,7 +94,7 @@ async function fixDiagnostic(host: PetHost, line?: number): Promise<void> {
   );
 
   if (reply.trim()) {
-    await presentPatch(host, editor.document, snippet, reply, '报错修复', {
+    await presentPatch(host, editor.document, snippet, reply, L('报错修复', 'Error fix'), {
       autoDiff: vscode.workspace.getConfiguration('deskpet').get<boolean>('fix.autoDiff', true),
     });
   }
@@ -99,7 +108,7 @@ async function analyzeClipboard(host: PetHost): Promise<void> {
     host.say(L('剪贴板是空的。先把报错日志或堆栈复制过来吧。', `The clipboard is empty. Copy an error log or stack trace first.`), { action: 'think' });
     return;
   }
-  await analyzeText(host, text, '剪贴板');
+  await analyzeText(host, text, L('剪贴板', 'Clipboard'));
 }
 
 async function analyzeLastFailure(host: PetHost): Promise<void> {
@@ -110,8 +119,11 @@ async function analyzeLastFailure(host: PetHost): Promise<void> {
     });
     return;
   }
-  const exit = typeof failure.exitCode === 'number' ? `（退出码 ${failure.exitCode}）` : '';
-  await analyzeText(host, failure.output, `命令失败${exit}`);
+  const exit =
+    typeof failure.exitCode === 'number'
+      ? L(`（退出码 ${failure.exitCode}）`, ` (exit code ${failure.exitCode})`)
+      : '';
+  await analyzeText(host, failure.output, L(`命令失败${exit}`, `Command failed${exit}`));
 }
 
 async function analyzeText(host: PetHost, text: string, sourceLabel: string): Promise<void> {
@@ -153,8 +165,13 @@ async function runFailureFlow(host: PetHost, failure: ParsedFailure, sourceLabel
       const range = await enclosingRange(primaryDoc, Math.max(0, primary.line - 1));
       primarySnippet = snippetFromRange(primaryDoc, range);
       host.notice(
-        L(`已定位：${vscode.workspace.asRelativePath(primary.uri, false)}:${primary.line}`, `Located: ${vscode.workspace.asRelativePath(primary.uri, false)}:${primary.line}`) +
-          (hits.length > 1 ? `，另有 ${hits.length - 1} 处调用位置` : ''),
+        L(
+          `已定位：${vscode.workspace.asRelativePath(primary.uri, false)}:${primary.line}`,
+          `Located: ${vscode.workspace.asRelativePath(primary.uri, false)}:${primary.line}`,
+        ) +
+          (hits.length > 1
+            ? L(`，另有 ${hits.length - 1} 处调用位置`, ` (+${hits.length - 1} more call sites)`)
+            : ''),
       );
       related = await relatedSnippets(hits.slice(1));
     } catch {
@@ -166,7 +183,10 @@ async function runFailureFlow(host: PetHost, failure: ParsedFailure, sourceLabel
   }
 
   const reply = await host.prompt(
-    `${sourceLabel}：${failure.message.slice(0, 90) || '分析报错'}`,
+    L(
+      `${sourceLabel}：${failure.message.slice(0, 90) || '分析报错'}`,
+      `${sourceLabel}: ${failure.message.slice(0, 90) || 'analyze the error'}`,
+    ),
     failurePrompt(
       { language: failure.language, message: failure.message, raw: failure.raw },
       primarySnippet ? toPromptSnippet(primarySnippet) : undefined,
@@ -176,7 +196,7 @@ async function runFailureFlow(host: PetHost, failure: ParsedFailure, sourceLabel
   );
 
   if (reply.trim() && primaryDoc && primarySnippet) {
-    await presentPatch(host, primaryDoc, primarySnippet, reply, '报错修复', {
+    await presentPatch(host, primaryDoc, primarySnippet, reply, L('报错修复', 'Error fix'), {
       autoDiff: vscode.workspace.getConfiguration('deskpet').get<boolean>('fix.autoDiff', true),
     });
   }
@@ -253,7 +273,7 @@ async function reviewFile(host: PetHost): Promise<void> {
   await focusPet();
   const relative = vscode.workspace.asRelativePath(document.uri, false);
   await host.prompt(
-    `体检 ${relative}`,
+    L(`体检 ${relative}`, `Review ${relative}`),
     reviewPrompt(relative, document.languageId, document.getText()),
     { action: 'think' },
   );

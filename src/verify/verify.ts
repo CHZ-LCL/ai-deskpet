@@ -111,40 +111,54 @@ export async function verifyAfterEdit(
 
   if (!diff.introduced.length) {
     vscode.window.setStatusBarMessage(
-      `✓ 桌宠已验证：没有引入新的错误${diff.fixed.length ? `（顺手修掉 ${diff.fixed.length} 个）` : ''}`,
+      L(
+        `✓ 桌宠已验证：没有引入新的错误${diff.fixed.length ? `（顺手修掉 ${diff.fixed.length} 个）` : ''}`,
+        `✓ DeskPet verified: no new errors${diff.fixed.length ? ` (fixed ${diff.fixed.length} along the way)` : ''}`,
+      ),
       5000,
     );
     return diff;
   }
 
   const groups = summarize(diff.introduced)
-    .map((group) => `${group.count} 个${group.label}`)
-    .join('、');
+    .map((group) => L(`${group.count} 个${group.label}`, `${group.count} ${group.label}`))
+    .join(L('、', ', '));
   const files = new Set(diff.introduced.map((item) => item.file).filter(Boolean));
 
   host.notice(
-    `修改引入了 ${diff.introduced.length} 个新错误（${groups}）${
-      files.size > 1 ? `，涉及 ${files.size} 个文件` : ''
-    }：\n${describeItems(diff.introduced, 4)}`,
+    L(
+      `修改引入了 ${diff.introduced.length} 个新错误（${groups}）${
+        files.size > 1 ? `，涉及 ${files.size} 个文件` : ''
+      }：\n${describeItems(diff.introduced, 4)}`,
+      `This edit introduced ${diff.introduced.length} new errors (${groups})${
+        files.size > 1 ? ` across ${files.size} files` : ''
+      }:\n${describeItems(diff.introduced, 4)}`,
+    ),
     'warn',
   );
 
-  const buttons = ['再修一次', '忽略'];
+  const fixAgain = L('再修一次', 'Fix again');
+  const dismiss = L('忽略', 'Dismiss');
+  const undoLabel = L('回退这次修改', 'Undo this edit');
+  const buttons = [fixAgain, dismiss];
   if (meta) {
-    buttons.unshift('回退这次修改');
+    buttons.unshift(undoLabel);
   }
 
   const choice = await vscode.window.showWarningMessage(
-    `这次修改引入了 ${diff.introduced.length} 个新错误（${groups}）`,
+    L(
+      `这次修改引入了 ${diff.introduced.length} 个新错误（${groups}）`,
+      `This edit introduced ${diff.introduced.length} new errors (${groups})`,
+    ),
     ...buttons,
   );
 
-  if (choice === '回退这次修改' && meta) {
+  if (choice === undoLabel && meta) {
     const history = getFixHistory();
     if (history && (await restoreFix(history, meta.id))) {
       host.say(L('已回退这次修改，回到修改前。', `Reverted this edit to the previous version.`), { action: 'shy' });
     }
-  } else if (choice === '再修一次') {
+  } else if (choice === fixAgain) {
     await vscode.commands.executeCommand(CMD.fixAll);
   }
 

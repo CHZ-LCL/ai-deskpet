@@ -6,6 +6,7 @@ import type {
   QuickAction,
   ThemeId,
 } from '../../shared/protocol';
+import { L } from '../i18n';
 import { THEME_PRESETS } from '../../shared/protocol';
 
 export interface ThemeFile {
@@ -47,15 +48,21 @@ export function parseThemeFile(text: string): { ok: true; file: ThemeFile } | { 
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, error: '不是合法的 JSON 文件。' };
+    return { ok: false, error: L('不是合法的 JSON 文件。', 'Not a valid JSON file.') };
   }
   if (!raw || typeof raw !== 'object') {
-    return { ok: false, error: '主题文件的根节点必须是对象。' };
+    return { ok: false, error: L('主题文件的根节点必须是对象。', 'The theme file root must be an object.') };
   }
 
   const data = raw as Record<string, unknown>;
   if (data.version !== undefined && data.version !== 1) {
-    return { ok: false, error: `不支持的主题版本：${String(data.version)}` };
+    return {
+      ok: false,
+      error: L(
+        `不支持的主题版本：${String(data.version)}`,
+        `Unsupported theme version: ${String(data.version)}`,
+      ),
+    };
   }
 
   const source = (data.theme ?? data) as Record<string, unknown>;

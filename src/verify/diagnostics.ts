@@ -1,4 +1,5 @@
 /** 修改后验证的纯逻辑：诊断快照对比与分类。 */
+import { L } from '../i18n';
 
 export type DiagSeverity = 'error' | 'warning' | 'info';
 
@@ -42,6 +43,13 @@ const CATEGORY_LABELS: Record<DiagCategory, string> = {
   other: '其它',
 };
 
+const CATEGORY_LABELS_EN: Record<DiagCategory, string> = {
+  module: 'module/name resolution',
+  type: 'type mismatch',
+  variable: 'variable/unused',
+  other: 'other',
+};
+
 export function categorize(item: DiagItem): DiagCategory {
   const text = `${item.message} ${item.code}`;
 
@@ -72,7 +80,11 @@ export function summarize(items: DiagItem[]): Array<{ category: DiagCategory; la
   }
   return (Object.keys(counts) as DiagCategory[])
     .filter((category) => counts[category] > 0)
-    .map((category) => ({ category, label: CATEGORY_LABELS[category], count: counts[category] }));
+    .map((category) => ({
+      category,
+      label: L(CATEGORY_LABELS[category], CATEGORY_LABELS_EN[category]),
+      count: counts[category],
+    }));
 }
 
 /** 用于通知和对话里的简短列表。 */

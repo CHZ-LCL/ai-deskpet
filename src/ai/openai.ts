@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { L } from '../i18n';
 import { abortSignalFromToken, normalizeBaseUrl, type AiProvider, type ChatTurn } from './types';
 
 export interface OpenAiOptions {
@@ -24,7 +25,12 @@ export class OpenAiCompatibleProvider implements AiProvider {
   async chat(messages: ChatTurn[], onDelta: (text: string) => void, token: vscode.CancellationToken): Promise<string> {
     const baseUrl = normalizeBaseUrl(this.options.baseUrl);
     if (!baseUrl) {
-      throw new Error('还没有配置 AI 接口地址（deskpet.ai.baseUrl）。');
+      throw new Error(
+        L(
+          '还没有配置 AI 接口地址（deskpet.ai.baseUrl）。',
+          'No AI endpoint is configured (deskpet.ai.baseUrl).',
+        ),
+      );
     }
 
     const { signal, dispose } = abortSignalFromToken(token);
@@ -48,11 +54,21 @@ export class OpenAiCompatibleProvider implements AiProvider {
 
       if (!response.ok) {
         const body = await safeText(response);
-        throw new Error(`AI 接口返回 ${response.status} ${response.statusText}${body ? `：${body.slice(0, 300)}` : ''}`);
+        throw new Error(
+          L(
+            `AI 接口返回 ${response.status} ${response.statusText}${body ? `：${body.slice(0, 300)}` : ''}`,
+            `AI endpoint returned ${response.status} ${response.statusText}${body ? `: ${body.slice(0, 300)}` : ''}`,
+          ),
+        );
       }
 
       if (!response.body) {
-        throw new Error('AI 接口没有返回可读取的数据流。');
+        throw new Error(
+          L(
+            'AI 接口没有返回可读取的数据流。',
+            'The AI endpoint did not return a readable stream.',
+          ),
+        );
       }
 
       const reader = response.body.getReader();
@@ -112,7 +128,10 @@ export class OpenAiCompatibleProvider implements AiProvider {
       }
       if (error instanceof TypeError) {
         throw new Error(
-          `连接不上 AI 接口：${baseUrl}\n${error.message}\n\n本地 Ollama 请确认已运行：ollama serve`,
+          L(
+            `连接不上 AI 接口：${baseUrl}\n${error.message}\n\n本地 Ollama 请确认已运行：ollama serve`,
+            `Cannot reach the AI endpoint: ${baseUrl}\n${error.message}\n\nFor local Ollama, make sure it is running: ollama serve`,
+          ),
         );
       }
       throw error;
@@ -127,7 +146,9 @@ export async function listOpenAiModels(baseUrl: string, apiKey?: string): Promis
     headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
   });
   if (!response.ok) {
-    throw new Error(`获取模型列表失败：${response.status}`);
+    throw new Error(
+      L(`获取模型列表失败：${response.status}`, `Could not list models: ${response.status}`),
+    );
   }
   const json = (await response.json()) as { data?: Array<{ id?: string }>; models?: Array<{ name?: string }> };
   return [...(json.data ?? []).map((item) => item.id).filter(Boolean), ...(json.models ?? []).map((item) => item.name).filter(Boolean)] as string[];

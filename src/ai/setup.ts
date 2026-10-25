@@ -43,11 +43,15 @@ export async function quickSetup(
   const apiKey = await context.secrets.get(API_KEY_SECRET);
 
   if (provider === 'openai' && !apiKey) {
+    const setKey = L('设置密钥', 'Set API key');
     const choice = await vscode.window.showInformationMessage(
-      '云端接口需要先设置密钥，再选择模型。',
-      '设置密钥',
+      L(
+        '云端接口需要先设置密钥，再选择模型。',
+        'Cloud endpoints need an API key before you can pick a model.',
+      ),
+      setKey,
     );
-    if (choice === '设置密钥') {
+    if (choice === setKey) {
       await vscode.commands.executeCommand('deskpet.setApiKey');
     }
     return;
@@ -57,14 +61,19 @@ export async function quickSetup(
   try {
     models = await listOpenAiModels(baseUrl, apiKey);
   } catch (error) {
-    const action = provider === 'ollama' ? '下载 Ollama' : '打开设置';
+    const action = provider === 'ollama' ? L('下载 Ollama', 'Download Ollama') : L('打开设置', 'Open settings');
     const choice = await vscode.window.showWarningMessage(
-      `连不上 ${baseUrl}。${provider === 'ollama' ? '请确认 ollama serve 正在运行。' : ''}`,
+      provider === 'ollama'
+        ? L(
+            `连不上 ${baseUrl}。请确认 ollama serve 正在运行。`,
+            `Cannot reach ${baseUrl}. Make sure "ollama serve" is running.`,
+          )
+        : L(`连不上 ${baseUrl}。`, `Cannot reach ${baseUrl}.`),
       action,
     );
-    if (choice === '下载 Ollama') {
+    if (choice === L('下载 Ollama', 'Download Ollama')) {
       await vscode.env.openExternal(vscode.Uri.parse('https://ollama.com/download'));
-    } else if (choice === '打开设置') {
+    } else if (choice === L('打开设置', 'Open settings')) {
       await vscode.commands.executeCommand('workbench.action.openSettings', 'deskpet.ai');
     }
     void error;
@@ -83,12 +92,13 @@ export async function quickSetup(
   const picked = await vscode.window.showQuickPick(
     sorted.map((model) => ({
       label: model,
-      description: model === current ? '当前' : score(model) <= 5 ? '推荐' : '',
+      description:
+        model === current ? L('当前', 'current') : score(model) <= 5 ? L('推荐', 'recommended') : '',
       picked: model === current,
     })),
     {
-      title: 'AI 桌宠 · 快速配置',
-      placeHolder: `当前模型：${current || '未设置'}`,
+      title: L('AI 桌宠 · 快速配置', 'AI DeskPet · Quick setup'),
+      placeHolder: L(`当前模型：${current || '未设置'}`, `Current model: ${current || 'not set'}`),
     },
   );
   if (!picked) {
@@ -139,18 +149,23 @@ export function registerAutoSetup(context: vscode.ExtensionContext, host: PetHos
     }
 
     const best = [...models].sort((left, right) => score(left) - score(right))[0];
+    const useBest = L('使用推荐模型', 'Use recommended');
+    const chooseOther = L('选择其它模型', 'Choose another');
     const choice = await vscode.window.showInformationMessage(
-      `检测到本机有 ${models.length} 个可用模型（推荐 ${best}），要自动配置桌宠吗？`,
-      '使用推荐模型',
-      '选择其它模型',
-      '稍后',
+      L(
+        `检测到本机有 ${models.length} 个可用模型（推荐 ${best}），要自动配置桌宠吗？`,
+        `Found ${models.length} local models (recommended: ${best}). Configure DeskPet automatically?`,
+      ),
+      useBest,
+      chooseOther,
+      L('稍后', 'Later'),
     );
     await context.globalState.update(key, true);
 
-    if (choice === '使用推荐模型') {
+    if (choice === useBest) {
       await config.update('ai.model', best, vscode.ConfigurationTarget.Global);
       host.say(L(`已经切到 ${best}，直接问我就行。`, `Switched to ${best}. Just ask me anything.`), { action: 'happy' });
-    } else if (choice === '选择其它模型') {
+    } else if (choice === chooseOther) {
       await quickSetup(context, host);
     }
   }, 9000);

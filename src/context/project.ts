@@ -69,8 +69,8 @@ export class ProjectContext implements vscode.Disposable {
   constructor(private readonly context: vscode.ExtensionContext) {
     this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
     this.statusBar.command = 'deskpet.reindex';
-    this.statusBar.tooltip = '点击重建项目索引（AI 桌宠）';
-    this.statusBar.text = '$(database) 索引待建立';
+    this.statusBar.tooltip = L('点击重建项目索引（AI 桌宠）', 'Click to rebuild the project index (AI DeskPet)');
+    this.statusBar.text = L('$(database) 索引待建立', '$(database) index pending');
     this.statusBar.show();
   }
 
@@ -176,7 +176,7 @@ export class ProjectContext implements vscode.Disposable {
       return;
     }
     this.status = 'building';
-    this.statusBar.text = '$(sync~spin) 建立项目索引…';
+    this.statusBar.text = L('$(sync~spin) 建立项目索引…', '$(sync~spin) Building project index…');
 
     try {
       const config = vscode.workspace.getConfiguration('deskpet');
@@ -192,7 +192,10 @@ export class ProjectContext implements vscode.Disposable {
         const batch = uris.slice(start, start + batchSize);
         await Promise.all(batch.map((uri) => this.indexFile(uri, vscode.workspace.asRelativePath(uri, false))));
         done += batch.length;
-        this.statusBar.text = `$(sync~spin) 索引 ${Math.min(done, uris.length)}/${uris.length}`;
+        this.statusBar.text = L(
+          `$(sync~spin) 索引 ${Math.min(done, uris.length)}/${uris.length}`,
+          `$(sync~spin) indexing ${Math.min(done, uris.length)}/${uris.length}`,
+        );
         // 让出事件循环，避免大仓库卡住编辑器
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
@@ -207,7 +210,7 @@ export class ProjectContext implements vscode.Disposable {
       this.onDidFinish?.();
     } catch (error) {
       this.status = 'idle';
-      this.statusBar.text = '$(warning) 索引失败';
+      this.statusBar.text = L('$(warning) 索引失败', '$(warning) index failed');
       this.statusBar.tooltip = error instanceof Error ? error.message : String(error);
     }
   }

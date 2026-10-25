@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { L } from '../i18n';
 import { OpenAiCompatibleProvider } from './openai';
 import { VscodeLmProvider } from './vscodeLm';
 import type { AiProvider } from './types';
@@ -48,5 +49,5 @@ export function providerLabel(settings: AiSettings): string {
   if (settings.provider === 'vscode-lm') {
     return 'VS Code LM';
   }
-  return `${settings.provider === 'ollama' ? 'Ollama' : 'OpenAI 兼容'} · ${settings.model}`;
+  return `${settings.provider === 'ollama' ? 'Ollama' : L('OpenAI 兼容', 'OpenAI-compatible')} · ${settings.model}`;
 }

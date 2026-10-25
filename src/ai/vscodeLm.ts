@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { L } from '../i18n';
 import type { AiProvider, ChatTurn } from './types';
 
 /**
@@ -6,14 +7,17 @@ import type { AiProvider, ChatTurn } from './types';
  */
 export class VscodeLmProvider implements AiProvider {
   readonly id = 'vscode-lm';
-  label = 'VS Code 语言模型';
+  label = L('VS Code 语言模型', 'VS Code Language Model');
 
   async chat(messages: ChatTurn[], onDelta: (text: string) => void, token: vscode.CancellationToken): Promise<string> {
     const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
     const model = models[0];
     if (!model) {
       throw new Error(
-        '没有可用的 VS Code 语言模型。请安装并登录 GitHub Copilot，或在设置里把 deskpet.ai.provider 改为 ollama / openai。',
+        L(
+          '没有可用的 VS Code 语言模型。请安装并登录 GitHub Copilot，或在设置里把 deskpet.ai.provider 改为 ollama / openai。',
+          'No VS Code language model is available. Install and sign in to GitHub Copilot, or set deskpet.ai.provider to ollama / openai.',
+        ),
       );
     }
     this.label = `${model.name} (${model.family})`;

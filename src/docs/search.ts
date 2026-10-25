@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { L } from '../i18n';
 import { htmlToText, normalizeUrl, truncate } from '../util';
 
 export interface DocSource {
@@ -44,7 +45,10 @@ export async function gatherSources(
     hits = provider === 'tavily' ? await tavilySearch(query, key) : await serperSearch(query, key);
   } catch (error) {
     void vscode.window.showWarningMessage(
-      `资料搜索失败：${error instanceof Error ? error.message : String(error)}`,
+      L(
+        `资料搜索失败：${error instanceof Error ? error.message : String(error)}`,
+        `Docs search failed: ${error instanceof Error ? error.message : String(error)}`,
+      ),
     );
     return { sources: [], searched: true };
   }
