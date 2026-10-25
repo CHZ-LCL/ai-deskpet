@@ -1,7 +1,7 @@
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 
-const EXTENSION_ID = 'your-publisher-id.ai-deskpet';
+const EXTENSION_ID = 'git-gud-ai.ai-deskpet';
 
 const EXPECTED_COMMANDS = [
   'deskpet.chat',

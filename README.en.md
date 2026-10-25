@@ -2,7 +2,7 @@
 
 > An AI coding buddy that lives in VS Code: it chats, reads your code, helps you finish the bug, and can wear your own Live2D, 3D, or image avatar.
 
-English | [简体中文](README.md)
+English | [简体中文](README.md) · Published by **Git-Gud-AI**
 
 - **Two homes**: a permanent sidebar, or a full editor tab.
 - **Inline chat**: `Ctrl+Alt+K` asks beside the code; answers are anchored as comment threads with apply / diff links.
@@ -53,7 +53,7 @@ English | [简体中文](README.md)
 ### Run from source
 
 ```bash
-git clone https://github.com/<your-name>/ai-deskpet.git
+git clone https://github.com/Git-Gud-AI/ai-deskpet.git
 cd ai-deskpet
 npm install
 npm run compile
@@ -136,12 +136,28 @@ Everything lives in **Avatars** (the ◍ button in the toolbar).
 
 | Type | Formats | Notes |
 | --- | --- | --- |
-| Built-in | Bundled | `assets/default/pet.png` (currently a metal-pipe sticker); falls back to the SVG pet if removed |
+| Built-in | Bundled | `assets/default/pet.png` (Git-Gud-AI character, transparent); falls back to the SVG pet if removed |
 | Image | png / jpg / gif / webp / svg / avif | Transparent background, 1000px+ recommended; wide images widen the stage |
 | Live2D | `.model3.json` (Cubism 4) | Requires the official `live2dcubismcore.min.js` |
 | 3D | `.vrm` / `.glb` / `.gltf` | VRM supports expressions and bones; plain GLB gets procedural motion |
 
 Import with **AI DeskPet: Import an avatar**. Directories are copied as a whole (textures, `.moc3`, `.bin`) into the extension's globalStorage, so moving the source later does not break anything.
+
+### Default avatar: Git-Gud-AI
+
+The bundled character was generated with ComfyUI + SDXL (blue/white techwear, silver bob, transparent background). The **front** view is the default pet; `assets/default/pet-blink.png` is the same pose with closed eyes and drives the idle blink.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/character/front.png" width="210" alt="Front"/><br/>Front</td>
+    <td align="center"><img src="docs/character/side.png" width="150" alt="Side"/><br/>Side</td>
+    <td align="center"><img src="docs/character/back.png" width="170" alt="Back"/><br/>Back</td>
+  </tr>
+</table>
+
+- The full-resolution transparent views are in `docs/character/` and on the Desktop as `GitGud-AI-front.png` / `-side.png` / `-back.png`.
+- The default pet has breathing, a slight sway, random blinking, and click / happy / alert / think reactions.
+- For a true Live2D model: rig the views in Cubism Editor, export a `.moc3`, then use **Avatars → Import avatar** with the `.model3.json`. See [docs/live2d.md](docs/live2d.md) for the part separation, parameters, and export checklist.
 
 ### Live2D extra step
 
@@ -409,7 +425,7 @@ npm run package   # typecheck + production build + vsix
 
 Before publishing:
 
-1. Replace `name` / `publisher` / `displayName` in `package.json` (the publisher is still the placeholder `your-publisher-id`).
+1. Replace `name` / `publisher` / `displayName` in `package.json` if you publish under a different account (the publisher is already `git-gud-ai`).
 2. Update `repository` / `homepage` / `bugs` and the clone URLs in both READMEs.
 3. Create an Azure DevOps PAT with Marketplace → Manage, then:
 

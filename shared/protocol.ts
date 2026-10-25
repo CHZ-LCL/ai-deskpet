@@ -139,6 +139,8 @@ export interface PetAssets {
   imageUri?: string;
   /** 随插件分发的默认立绘（放到 assets/default/ 自动生效） */
   builtinImageUri?: string;
+  /** 默认形象的闭眼帧（可选，用于待机眨眼） */
+  blinkUri?: string;
   /** Live2D 的 .model3.json / .model.json 的 url */
   live2dModelUri?: string;
   /** Cubism Core 脚本 url（由用户提供） */

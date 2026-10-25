@@ -117,7 +117,7 @@
         ttsRate: 1,
         language: 'zh',
         languageSetting: 'zh',
-        assets: { sounds: {}, builtinImageUri: '../assets/default/pet.png' },
+        assets: { sounds: {}, builtinImageUri: '../assets/default/pet.png', blinkUri: '../assets/default/pet-blink.png' },
         aiProviderLabel: 'Ollama · qwen2.5-coder:14b',
         aiModel: 'qwen2.5-coder:14b',
         contextLabel: '128 文件 · 356 块',
@@ -191,6 +191,9 @@
             at: Date.now(),
           },
         ];
+      }
+      if (params.has('blink')) {
+        setTimeout(() => document.querySelector('.pet-idle')?.classList.add('is-blinking'), 900);
       }
       if (params.has('empty')) {
         init.history = [];

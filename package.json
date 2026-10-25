@@ -3,7 +3,10 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "version": "0.1.0",
-  "publisher": "your-publisher-id",
+  "publisher": "git-gud-ai",
+  "author": {
+    "name": "Git-Gud-AI"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.93.0"
@@ -27,12 +30,12 @@
   "icon": "assets/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-name/ai-deskpet.git"
+    "url": "https://github.com/Git-Gud-AI/ai-deskpet.git"
   },
   "bugs": {
-    "url": "https://github.com/your-name/ai-deskpet/issues"
+    "url": "https://github.com/Git-Gud-AI/ai-deskpet/issues"
   },
-  "homepage": "https://github.com/your-name/ai-deskpet#readme",
+  "homepage": "https://github.com/Git-Gud-AI/ai-deskpet#readme",
   "activationEvents": [
     "onStartupFinished"
   ],

@@ -2,7 +2,7 @@
 
 > 一只住在 VS Code 里的编程搭子：会聊天、会看你的代码、会陪你把 bug 修完，还能换成你自己画的 Live2D 或 3D 形象。
 
-[English](README.en.md) | 简体中文
+[English](README.en.md) | 简体中文 · 发布者：**Git-Gud-AI**
 
 - **双形态**：常驻侧边栏，也可以拖成编辑器标签放大看。
 - **行内对话**：`Ctrl+Alt+K` 直接在代码旁开问，答案挂在评论线程里，一键应用/看差异。
@@ -57,7 +57,7 @@
 ### 从源码运行
 
 ```bash
-git clone https://github.com/<your-name>/ai-deskpet.git
+git clone https://github.com/Git-Gud-AI/ai-deskpet.git
 cd ai-deskpet
 npm install
 npm run compile
@@ -124,10 +124,26 @@ ollama pull qwen2.5-coder:14b
 
 | 类型 | 支持格式 | 说明 |
 | --- | --- | --- |
-| 默认 | 随包附带 | `assets/default/pet.png`（当前是一张金属水管贴纸）；删掉后回退到 SVG 小豆 |
+| 默认 | 随包附带 | `assets/default/pet.png`（Git-Gud-AI 拟人形象，透明背景）；删掉后回退到 SVG 小豆 |
 | 图片 | png / jpg / gif / webp / svg / avif | 建议透明背景、1000px 以上；横版会自动加宽展示 |
 | Live2D | `.model3.json`（Cubism 4） | 需要自备 Live2D 官方的 `live2dcubismcore.min.js` |
 | 3D | `.vrm` / `.glb` / `.gltf` | VRM 支持表情与骨骼，普通 GLB 只做整体动效 |
+
+### 默认形象：Git-Gud-AI
+
+随包附带一张 ComfyUI + SDXL 生成的拟人形象（蓝白科技服、银灰短发、透明背景），默认使用**正面**；`assets/default/pet-blink.png` 是同一姿态的闭眼帧，用来做待机眨眼。
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/character/front.png" width="210" alt="正面"/><br/>正面</td>
+    <td align="center"><img src="docs/character/side.png" width="150" alt="侧面"/><br/>侧面</td>
+    <td align="center"><img src="docs/character/back.png" width="170" alt="背面"/><br/>背面</td>
+  </tr>
+</table>
+
+- 三视图原图也放在桌面：`GitGud-AI-front.png` / `GitGud-AI-side.png` / `GitGud-AI-back.png`（2 倍分辨率、透明背景）。
+- 默认桌宠带呼吸、轻微摆动、随机眨眼，以及点击 / 开心 / 报错 / 思考等动作。
+- 想换成真·Live2D：把三视图导入 Cubism Editor 绑定骨骼导出 `.moc3`，再用「形象库 → 导入形象」选择 `.model3.json`。详细的拆层、参数和导出步骤见 [docs/live2d.md](docs/live2d.md)。
 
 ### 导入
 
@@ -773,7 +789,7 @@ npm run package     # 类型检查 + 生产构建 + 生成 vsix
 
 发布到 VS Code Marketplace：
 
-1. 改 `package.json` 的 `name` / `publisher` / `displayName`（现在 publisher 是占位符 `your-publisher-id`）。
+1. 改 `package.json` 的 `name` / `publisher` / `displayName`（现在 publisher 已经是 `git-gud-ai`，换账号时再改）。
 2. 把 `package.json` 里的 `repository` / `homepage` / `bugs` 和本 README 里的仓库地址换成你的。
 3. 在 Azure DevOps 创建 Personal Access Token（Marketplace → Manage 权限）。
 4. 登录并发布：
@@ -790,7 +806,7 @@ git init
 git add .
 git commit -m "feat: initial release"
 git branch -M main
-git remote add origin https://github.com/<you>/ai-deskpet.git
+git remote add origin https://github.com/Git-Gud-AI/ai-deskpet.git
 git push -u origin main
 ```
 

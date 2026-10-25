@@ -14,7 +14,45 @@ export async function createImageRenderer(context: RendererContext): Promise<Pet
   image.draggable = false;
   image.alt = '桌宠形象';
   image.src = context.assets.imageUri ?? '';
-  root.appendChild(image);
+  const idle = document.createElement('div');
+  idle.className = 'pet-idle';
+  idle.appendChild(image);
+
+  let blinkTimer: number | undefined;
+  let closeTimer: number | undefined;
+  let started = false;
+  const blinkUri = context.assets.blinkUri;
+  if (blinkUri) {
+    const blink = document.createElement('img');
+    blink.className = 'pet-blink';
+    blink.alt = '';
+    blink.draggable = false;
+    blink.src = blinkUri;
+    idle.appendChild(blink);
+
+    const schedule = () => {
+      // 首次眨眼放到 5 秒后，避免视觉回归截图恰好抓到闭眼帧
+      const delay = started ? 2600 + Math.random() * 4200 : 5200 + Math.random() * 800;
+      started = true;
+      blinkTimer = window.setTimeout(
+        () => {
+          if (document.body.dataset.motion === 'off') {
+            schedule();
+            return;
+          }
+          idle.classList.add('is-blinking');
+          closeTimer = window.setTimeout(() => {
+            idle.classList.remove('is-blinking');
+            schedule();
+          }, 140);
+        },
+        delay,
+      );
+    };
+    schedule();
+  }
+
+  root.appendChild(idle);
   context.container.appendChild(root);
   applyScale(root, context.scale);
 
@@ -57,6 +95,12 @@ export async function createImageRenderer(context: RendererContext): Promise<Pet
       // CSS 自适应
     },
     destroy() {
+      if (blinkTimer) {
+        window.clearTimeout(blinkTimer);
+      }
+      if (closeTimer) {
+        window.clearTimeout(closeTimer);
+      }
       root.remove();
       if (block) {
         block.style.removeProperty('--pet-aspect');

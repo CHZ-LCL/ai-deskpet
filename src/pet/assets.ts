@@ -109,6 +109,10 @@ export class AssetStore {
     if (defaultImage) {
       assets.builtinImageUri = webview.asWebviewUri(vscode.Uri.file(defaultImage)).toString();
     }
+    const blink = path.join(this.defaultsDir.fsPath, 'pet-blink.png');
+    if (renderer === 'builtin' && defaultImage && (await exists(blink))) {
+      assets.blinkUri = webview.asWebviewUri(vscode.Uri.file(blink)).toString();
+    }
 
     if (modelUri) {
       if (renderer === 'image') {
@@ -127,9 +131,12 @@ export class AssetStore {
   /** assets/default/ 里第一张图片会被当作默认立绘（用户后续提供的默认样式放这里）。 */
   async findDefaultImage(): Promise<string | undefined> {
     const entries = await safeReadDir(this.defaultsDir.fsPath);
-    const file = entries.find(
+    const images = entries.filter(
       (entry) => entry.isFile() && /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(entry.name),
     );
+    // 固定优先 pet.png，避免同目录里其它立绘（正面/侧面/背面）抢到默认位
+    const preferred = images.find((entry) => entry.name.toLowerCase() === 'pet.png');
+    const file = preferred ?? images[0];
     return file ? path.join(this.defaultsDir.fsPath, file.name) : undefined;
   }
 

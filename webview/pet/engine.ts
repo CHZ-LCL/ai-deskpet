@@ -181,7 +181,11 @@ export class PetEngine {
     if (config.assets.builtinImageUri) {
       return createImageRenderer({
         container: this.container,
-        assets: { ...config.assets, imageUri: config.assets.builtinImageUri },
+        assets: {
+          ...config.assets,
+          imageUri: config.assets.builtinImageUri,
+          blinkUri: config.assets.blinkUri,
+        },
         scale: config.scale,
       });
     }
