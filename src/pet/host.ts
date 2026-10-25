@@ -9,7 +9,9 @@ import type {
   PetAction,
   PetConfig,
   PetSnapshot,
+  PetTone,
   ProblemItem,
+  ReplyLength,
   SoundSlot,
   StandardsPack,
   WebviewMessage,
@@ -284,6 +286,11 @@ export class PetHost implements vscode.Disposable {
         extra: vscode.workspace.getConfiguration('deskpet').get<string>('ai.extraInstructions', ''),
         level: snapshot.level,
         days: snapshot.daysTogether,
+        userName: vscode.workspace.getConfiguration('deskpet').get<string>('pet.userName', ''),
+        tone: vscode.workspace.getConfiguration('deskpet').get<PetTone>('pet.tone', 'warm'),
+        replyLength: vscode.workspace
+          .getConfiguration('deskpet')
+          .get<ReplyLength>('ai.replyLength', 'normal'),
       }),
       `当前环境：${workspaceSummary()}；AI：${provider.label}。`,
       standardsBlock(this.project.getConventions(), this.project.getStyleProfile()),
@@ -360,6 +367,11 @@ export class PetHost implements vscode.Disposable {
           extra: vscode.workspace.getConfiguration('deskpet').get<string>('ai.extraInstructions', ''),
           level: snapshot.level,
           days: snapshot.daysTogether,
+          userName: vscode.workspace.getConfiguration('deskpet').get<string>('pet.userName', ''),
+          tone: vscode.workspace.getConfiguration('deskpet').get<PetTone>('pet.tone', 'warm'),
+          replyLength: vscode.workspace
+            .getConfiguration('deskpet')
+            .get<ReplyLength>('ai.replyLength', 'normal'),
         }),
         `当前环境：${workspaceSummary()}；AI：${provider.label}。`,
         standardsBlock(this.project.getConventions(), this.project.getStyleProfile()),

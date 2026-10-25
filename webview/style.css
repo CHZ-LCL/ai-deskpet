@@ -171,6 +171,7 @@ button {
   transform: translateX(-50%);
   background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), transparent);
   filter: blur(6px);
+  opacity: var(--glow, 1);
   pointer-events: none;
 }
 
@@ -1722,6 +1723,188 @@ body.pet-wide .chat {
   background: color-mix(in srgb, var(--accent) 18%, var(--bg));
   color: color-mix(in srgb, var(--accent) 85%, var(--ink));
   box-shadow: 0 1px 4px color-mix(in srgb, #000 18%, transparent);
+}
+
+/* ---------------------------------------------------------------- 个性化 */
+
+body[data-bg="plain"] .app::after,
+body[data-bg="none"] .app::after {
+  display: none;
+}
+
+body[data-bg="none"] .app {
+  background: var(--bg);
+}
+
+body[data-bg="none"] .stage-glow {
+  display: none;
+}
+
+body.hide-nameplate .name-plate {
+  display: none;
+}
+
+body[data-density="compact"] .msg {
+  padding: 5px 8px;
+  font-size: 11.6px;
+}
+
+body[data-density="compact"] .chat-log {
+  gap: 5px;
+}
+
+body[data-density="comfortable"] .msg {
+  padding: 9px 12px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+body[data-motion="lite"] .pet-body,
+body[data-motion="lite"] .pet-tail,
+body[data-motion="lite"] .pet-antenna,
+body[data-motion="lite"] .pet-antenna-light,
+body[data-motion="lite"] .pet-shadow,
+body[data-motion="lite"] .pet-aura {
+  animation: none !important;
+}
+
+body[data-motion="off"] * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 6px;
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 4px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.swatch.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.swatch-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.swatch-label {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.accent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.accent-row input[type="color"] {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+}
+
+.accent-row code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.qa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.qa-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 5px;
+}
+
+.qa-row input,
+.text-input {
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 70%, var(--ink) 5%);
+  color: var(--ink);
+  font-size: 10.8px;
+  outline: none;
+}
+
+.qa-row input:focus,
+.text-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.qa-remove {
+  width: 24px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+
+.qa-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.qa-actions .primary-btn {
+  flex: 1;
+}
+
+.qa-actions .primary-btn,
+.qa-actions .ghost-btn {
+  height: 26px;
+  font-size: 11px;
+}
+
+textarea#custom-css {
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 70%, var(--ink) 5%);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10.8px;
+  resize: vertical;
+  outline: none;
+}
+
+#css-apply {
+  margin-top: 6px;
+}
+
+.text-input {
+  width: 100%;
+  margin-top: 2px;
 }
 
 /* ---------------------------------------------------------------- 响应式 */

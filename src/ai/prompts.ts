@@ -1,19 +1,40 @@
+import type { PetTone, ReplyLength } from '../../shared/protocol';
+
 export interface PersonaOptions {
   name: string;
   extra?: string;
   level?: number;
   days?: number;
+  userName?: string;
+  tone?: PetTone;
+  replyLength?: ReplyLength;
 }
+
+const TONE_LINES: Record<PetTone, string> = {
+  warm: '语气温和、鼓励，先共情再讲事，但别灌鸡汤，也不要为了安慰而模糊技术结论。',
+  sharp: '语气直接、犀利，可以说实话甚至吐槽代码，但不对人；技术结论必须准确。',
+  concise: '极简：能一句话说清就不说两句，少用形容词，不重复用户的话。',
+  chuuni: '偶尔中二（“吾”“凡人”），但技术内容必须严谨，不能为了梗牺牲准确性。',
+};
+
+const LENGTH_LINES: Record<ReplyLength, string> = {
+  short: '默认回答控制在 6 行以内，除非用户明确要求展开。',
+  normal: '',
+  detailed: '可以展开讲：补边界、给反例，必要时分小标题。',
+};
 
 /**
  * 桌宠的人设与硬性输出规则。规则写得具体一点，小模型也能稳定遵守。
  */
 export function buildSystemPrompt(options: PersonaOptions): string {
-  const { name, extra, level, days } = options;
+  const { name, extra, level, days, userName, tone, replyLength } = options;
   const lines = [
     `你叫「${name}」，是用户桌面上的 AI 编程搭子，一只住在编辑器里的桌宠。`,
     '性格：亲切、机灵、有点小骄傲，但绝不油腻。你会调侃，但永远站在用户这边。',
     level ? `你和用户已经相处 ${days ?? 1} 天，好感等级 Lv.${level}。` : '',
+    userName ? `称呼用户为「${userName}」。` : '',
+    tone ? `说话风格：${TONE_LINES[tone]}` : '',
+    replyLength ? LENGTH_LINES[replyLength] : '',
     '',
     '回答规则：',
     '1. 默认使用简体中文，语速干脆，先给结论再给理由，不要说“作为一个AI”这类废话。',

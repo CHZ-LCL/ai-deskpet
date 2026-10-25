@@ -1,18 +1,25 @@
 import type {
   AdviceAction,
   AssetItem,
+  BackgroundStyle,
+  Density,
   HostMessage,
   InterruptionLevel,
+  MotionLevel,
   PetAction,
   PetConfig,
   PetSnapshot,
+  PetTone,
   ProblemItem,
+  QuickAction,
+  ReplyLength,
   SoundItem,
   SoundSlot,
   StandardsPack,
+  ThemeId,
   WebviewMessage,
 } from '../shared/protocol';
-import { CMD } from '../shared/protocol';
+import { CMD, DEFAULT_QUICK_ACTIONS, THEME_PRESETS } from '../shared/protocol';
 import { AudioKit } from './audio';
 import { PetEngine } from './pet/engine';
 import { ChatView } from './ui/chat';
@@ -250,7 +257,7 @@ function onInit(message: Extract<HostMessage, { type: 'init' }>): void {
     if (!vscode.getState()?.greeted) {
       vscode.setState({ ...(vscode.getState() ?? {}), greeted: true });
       window.setTimeout(() => {
-        showSay('我在这儿，需要我陪你看段代码吗？', 7000, [
+        showSay(message.config.greeting || '我在这儿，需要我陪你看段代码吗？', 7000, [
           { label: '讲解选中代码', command: CMD.explain },
           { label: '查资料', send: '__docs__' },
         ]);
@@ -272,6 +279,7 @@ function applyConfig(config: PetConfig): void {
   dom.indexChip.hidden = !config.contextLabel;
   dom.indexChip.title = config.contextLabel ? `已索引项目：${config.contextLabel}` : '项目索引未建立';
   audio.configure(config.volume, config.assets);
+  applyAppearance(config);
 
   const rendererKey = [
     config.renderer,
@@ -290,8 +298,100 @@ function applyConfig(config: PetConfig): void {
   }
 }
 
-function applySnapshot(snapshot: PetSnapshot): void {
-  state.snapshot = snapshot;
+let customStyle: HTMLStyleElement | undefined;
+
+/** 主题、背景、动效、排版、快捷按钮与自定义 CSS 都从这里落到 DOM 上。 */
+function applyAppearance(config: PetConfig): void {
+  const theme = config.theme;
+  const preset = THEME_PRESETS.find((item) => item.id === theme.id) ?? THEME_PRESETS[1];
+  const root = document.documentElement;
+
+  const accent =
+    theme.id === 'auto'
+      ? 'var(--vscode-focusBorder, #4ec9b0)'
+      : theme.id === 'custom'
+        ? theme.accent
+        : preset.accent;
+
+  root.style.setProperty('--accent', accent);
+  root.style.setProperty(
+    '--accent-deep',
+    theme.id === 'auto' ? 'color-mix(in srgb, var(--accent) 76%, #062620)' : darken(accent, 0.24),
+  );
+  root.style.setProperty('--warm', preset.warm);
+  root.style.setProperty('--glow', String(preset.glow));
+
+  document.body.dataset.bg = theme.background;
+  document.body.dataset.motion = theme.motion;
+  document.body.dataset.density = theme.density;
+  document.body.classList.toggle('hide-nameplate', !theme.nameplate);
+
+  applyCustomCss(theme.customCss);
+  renderQuickActions(config.quickActions);
+}
+
+function darken(hex: string, amount: number): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!match) {
+    return '#2aa88f';
+  }
+  const value = Number.parseInt(match[1], 16);
+  const base = { r: 6, g: 38, b: 32 };
+  const mix = (channel: number, target: number) => Math.round(channel * (1 - amount) + target * amount);
+  const r = mix((value >> 16) & 0xff, base.r);
+  const g = mix((value >> 8) & 0xff, base.g);
+  const b = mix(value & 0xff, base.b);
+  return `#${[r, g, b].map((part) => part.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function applyCustomCss(css: string): void {
+  if (!css.trim()) {
+    customStyle?.remove();
+    customStyle = undefined;
+    return;
+  }
+  if (!customStyle) {
+    customStyle = document.createElement('style');
+    customStyle.id = 'deskpet-custom-css';
+    document.head.appendChild(customStyle);
+  }
+  customStyle.textContent = css;
+}
+
+function renderQuickActions(actions: QuickAction[]): void {
+  dom.quick.innerHTML = '';
+
+  actions.forEach((action, index) => {
+    const button = document.createElement('button');
+    button.textContent = action.label;
+    button.dataset.actionIndex = String(index);
+    if (state.docsMode && action.text === '__docs__') {
+      button.classList.add('active');
+    }
+    dom.quick.appendChild(button);
+  });
+
+  const clear = document.createElement('button');
+  clear.className = 'ghost';
+  clear.dataset.quick = 'clear';
+  clear.textContent = '清空';
+  dom.quick.appendChild(clear);
+}
+
+function segmented(
+  name: string,
+  options: Array<[string, string]>,
+  current: string,
+): string {
+  return `<div class="segmented" data-setting="${name}">${options
+    .map(
+      ([value, label]) =>
+        `<button data-value="${value}" class="${value === current ? 'active' : ''}">${label}</button>`,
+    )
+    .join('')}</div>`;
+}
+
+function applySnapshot(snapshot: PetSnapshot): void {  state.snapshot = snapshot;
   dom.levelChip.textContent = `Lv.${snapshot.level}`;
   dom.levelChip.title = `好感度 ${snapshot.affection} · 陪伴 ${snapshot.daysTogether} 天 · 互动 ${snapshot.totalChats + snapshot.totalClicks} 次`;
   const name = state.config?.name ?? '桌宠';
@@ -411,8 +511,11 @@ function setDocsMode(enabled: boolean): void {
   dom.input.placeholder = enabled
     ? '查资料：关键词或文档地址，Enter 发送…'
     : '和桌宠聊聊…（Enter 发送 / Shift+Enter 换行）';
-  const chip = dom.quick.querySelector('[data-quick="docs"]');
-  chip?.classList.toggle('active', enabled);
+
+  dom.quick.querySelectorAll<HTMLElement>('[data-action-index]').forEach((button) => {
+    const action = state.config?.quickActions[Number(button.dataset.actionIndex)];
+    button.classList.toggle('active', Boolean(enabled) && action?.text === '__docs__');
+  });
 }
 
 function autoGrow(): void {
@@ -465,35 +568,31 @@ dom.input.addEventListener('keydown', (event) => {
 });
 
 dom.quick.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('[data-quick]');
+  const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
   if (!target) {
     return;
   }
-  const kind = target.dataset.quick;
-  if (kind === 'docs') {
-    setDocsMode(!state.docsMode);
-    dom.input.focus();
-    return;
-  }
-  if (kind === 'clear') {
+
+  if (target.dataset.quick === 'clear') {
     post({ type: 'clearHistory' });
     chat.clear();
     return;
   }
-  const command =
-    kind === 'explain'
-      ? CMD.explain
-      : kind === 'teach'
-        ? CMD.teach
-        : kind === 'fix'
-          ? CMD.fix
-          : kind === 'tests'
-            ? CMD.tests
-            : kind === 'docgen'
-              ? CMD.generateDocs
-              : undefined;
-  if (command) {
-    post({ type: 'command', command });
+
+  const index = Number(target.dataset.actionIndex);
+  const action = state.config?.quickActions[index];
+  if (!action) {
+    return;
+  }
+
+  if (action.command) {
+    post({ type: 'command', command: action.command });
+  } else if (action.text === '__docs__') {
+    setDocsMode(!state.docsMode);
+    dom.input.focus();
+  } else if (action.text) {
+    dom.input.value = action.text;
+    submit();
   }
 });
 
@@ -528,9 +627,9 @@ dom.petMount.addEventListener('click', (event) => {
 
 // ------------------------------------------------------------------ 工具栏 / 抽屉
 
-let currentDrawer: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards' | undefined;
+let currentDrawer: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards' | 'palette' | undefined;
 
-function openDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards'): void {
+function openDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards' | 'palette'): void {
   currentDrawer = kind;
   dom.drawer.hidden = false;
   renderDrawer(kind);
@@ -541,7 +640,7 @@ function closeDrawer(): void {
   dom.drawer.hidden = true;
 }
 
-function renderDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards'): void {
+function renderDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards' | 'palette'): void {
   if (kind === 'gallery') {
     renderGallery();
   } else if (kind === 'sound') {
@@ -550,6 +649,8 @@ function renderDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'sta
     renderProblems();
   } else if (kind === 'standards') {
     renderStandards();
+  } else if (kind === 'palette') {
+    renderPalette();
   } else {
     renderSettings();
   }
@@ -791,6 +892,210 @@ function renderStandards(): void {
   });
 }
 
+function renderPalette(): void {
+  const config = state.config;
+  if (!config) {
+    dom.drawerTitle.textContent = '个性化';
+    dom.drawerBody.innerHTML = '<div class="hint">正在加载配置…</div>';
+    return;
+  }
+
+  const theme = config.theme;
+  dom.drawerTitle.textContent = '个性化';
+
+  const swatches = THEME_PRESETS.map(
+    (preset) => `<button class="swatch ${theme.id === preset.id ? 'active' : ''}" data-theme="${preset.id}">
+      <span class="swatch-dot" style="${preset.accent ? `background:${preset.accent}` : 'background:linear-gradient(135deg,#4ec9b0,#ffb27a)'}"></span>
+      <span class="swatch-label">${escapeText(preset.label)}</span>
+    </button>`,
+  ).join('');
+
+  const actions = config.quickActions.length ? config.quickActions : DEFAULT_QUICK_ACTIONS;
+  const rows = actions
+    .map(
+      (action, index) => `<div class="qa-row" data-index="${index}">
+        <input class="qa-label" value="${escapeAttr(action.label)}" maxlength="20" placeholder="按钮文字" />
+        <input class="qa-command" value="${escapeAttr(action.command ?? (action.text === '__docs__' ? '__docs__' : ''))}" placeholder="命令 id 或 __docs__" />
+        <button class="qa-remove" title="删除">×</button>
+      </div>`,
+    )
+    .join('');
+
+  dom.drawerBody.innerHTML = `
+    <div class="standards-section">
+      <div class="section-title">主题</div>
+      <div class="swatch-grid">${swatches}</div>
+      <div class="accent-row">
+        <span>自定义主色</span>
+        <input type="color" id="accent-color" value="${theme.accent}" />
+        <code id="accent-hex">${theme.accent}</code>
+      </div>
+    </div>
+
+    <div class="standards-section">
+      <div class="section-title">背景</div>
+      ${segmented('background', [['grid', '网格'], ['plain', '纯色'], ['none', '极简']], theme.background)}
+    </div>
+    <div class="standards-section">
+      <div class="section-title">动效</div>
+      ${segmented('motion', [['full', '完整'], ['lite', '轻量'], ['off', '关闭']], theme.motion)}
+    </div>
+    <div class="standards-section">
+      <div class="section-title">排版</div>
+      ${segmented('density', [['compact', '紧凑'], ['cozy', '标准'], ['comfortable', '宽松']], theme.density)}
+    </div>
+
+    <div class="setting">
+      <div class="setting-head"><span>显示名牌</span></div>
+      <label class="switch"><input type="checkbox" id="nameplate-toggle" ${theme.nameplate ? 'checked' : ''}/><span></span></label>
+    </div>
+
+    <div class="standards-section">
+      <div class="section-title">快捷按钮</div>
+      <div class="qa-list" id="qa-list">${rows}</div>
+      <div class="qa-actions">
+        <button class="ghost-btn" id="qa-add">+ 添加</button>
+        <button class="primary-btn" id="qa-save">保存</button>
+      </div>
+      <div class="hint">命令 id 填 <code>__docs__</code> 表示切换到查资料模式；留空的按钮不会保存。</div>
+    </div>
+
+    <div class="standards-section">
+      <div class="section-title">自定义 CSS</div>
+      <textarea id="custom-css" rows="5" placeholder=".msg { border-radius: 4px; }">${escapeText(theme.customCss)}</textarea>
+      <button class="ghost-btn" id="css-apply">应用 CSS</button>
+    </div>`;
+
+  dom.drawerFoot.innerHTML = '<span class="hint">改动即时预览，并写入你的 VS Code 设置</span>';
+
+  dom.drawerBody.querySelectorAll<HTMLElement>('[data-theme]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.dataset.theme as ThemeId | undefined;
+      if (!id || !state.config) {
+        return;
+      }
+      state.config.theme.id = id;
+      applyAppearance(state.config);
+      post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.theme', value: id } });
+      renderPalette();
+    });
+  });
+
+  const colorInput = dom.drawerBody.querySelector<HTMLInputElement>('#accent-color');
+  const hexLabel = dom.drawerBody.querySelector<HTMLElement>('#accent-hex');
+  const pushAccent = debounce((value: string) => {
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.accent', value } });
+  }, 400);
+
+  colorInput?.addEventListener('input', () => {
+    const value = colorInput.value;
+    if (!state.config) {
+      return;
+    }
+    state.config.theme.accent = value;
+    state.config.theme.id = 'custom';
+    if (hexLabel) {
+      hexLabel.textContent = value;
+    }
+    applyAppearance(state.config);
+    pushAccent(value);
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.theme', value: 'custom' } });
+    dom.drawerBody.querySelectorAll<HTMLElement>('[data-theme]').forEach((element) => {
+      element.classList.toggle('active', element.dataset.theme === 'custom');
+    });
+  });
+
+  dom.drawerBody.querySelectorAll<HTMLElement>('.segmented[data-setting]').forEach((group) => {
+    const key = group.dataset.setting as 'background' | 'motion' | 'density';
+    group.querySelectorAll<HTMLElement>('button').forEach((button) => {
+      button.addEventListener('click', () => {
+        const value = button.dataset.value;
+        if (!state.config || !value) {
+          return;
+        }
+        if (key === 'background') {
+          state.config.theme.background = value as BackgroundStyle;
+        } else if (key === 'motion') {
+          state.config.theme.motion = value as MotionLevel;
+        } else {
+          state.config.theme.density = value as Density;
+        }
+        applyAppearance(state.config);
+        group.querySelectorAll('button').forEach((element) => element.classList.toggle('active', element === button));
+        post({ type: 'command', command: 'deskpet.updateSetting', args: { key: `ui.${key}`, value } });
+      });
+    });
+  });
+
+  const nameplate = dom.drawerBody.querySelector<HTMLInputElement>('#nameplate-toggle');
+  nameplate?.addEventListener('change', () => {
+    if (!state.config) {
+      return;
+    }
+    state.config.theme.nameplate = nameplate.checked;
+    applyAppearance(state.config);
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.nameplate', value: nameplate.checked } });
+  });
+
+  const list = dom.drawerBody.querySelector<HTMLElement>('#qa-list');
+  const wireRemove = (row: HTMLElement) => {
+    row.querySelector('.qa-remove')?.addEventListener('click', () => row.remove());
+  };
+  list?.querySelectorAll<HTMLElement>('.qa-row').forEach(wireRemove);
+
+  dom.drawerBody.querySelector('#qa-add')?.addEventListener('click', () => {
+    if (!list) {
+      return;
+    }
+    const row = document.createElement('div');
+    row.className = 'qa-row';
+    row.innerHTML =
+      '<input class="qa-label" maxlength="20" placeholder="按钮文字"/><input class="qa-command" placeholder="命令 id"/><button class="qa-remove" title="删除">×</button>';
+    list.appendChild(row);
+    wireRemove(row);
+  });
+
+  dom.drawerBody.querySelector('#qa-save')?.addEventListener('click', () => {
+    if (!state.config || !list) {
+      return;
+    }
+    const next: QuickAction[] = [];
+    list.querySelectorAll<HTMLElement>('.qa-row').forEach((row) => {
+      const label = row.querySelector<HTMLInputElement>('.qa-label')?.value.trim();
+      const command = row.querySelector<HTMLInputElement>('.qa-command')?.value.trim();
+      if (!label) {
+        return;
+      }
+      if (command === '__docs__') {
+        next.push({ label, text: '__docs__' });
+      } else if (command) {
+        next.push({ label, command });
+      } else {
+        next.push({ label, command: CMD.explain });
+      }
+    });
+
+    const actions = next.length ? next.slice(0, 10) : [...DEFAULT_QUICK_ACTIONS];
+    state.config.quickActions = actions;
+    applyAppearance(state.config);
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.quickActions', value: actions } });
+    toast('快捷按钮已保存');
+    renderPalette();
+  });
+
+  const cssBox = dom.drawerBody.querySelector<HTMLTextAreaElement>('#custom-css');
+  dom.drawerBody.querySelector('#css-apply')?.addEventListener('click', () => {
+    if (!state.config || !cssBox) {
+      return;
+    }
+    const css = cssBox.value.slice(0, 12_000);
+    state.config.theme.customCss = css;
+    applyCustomCss(css);
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.customCss', value: css } });
+    toast('自定义 CSS 已应用');
+  });
+}
+
 function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
   const config = state.config;
   const snapshot = state.snapshot;
@@ -806,6 +1111,31 @@ function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
         <button data-value="balanced">平衡</button>
         <button data-value="chatty">话多</button>
       </div>
+    </div>
+    <div class="setting">
+      <div class="setting-head"><span>怎么称呼你</span></div>
+      <input class="text-input" id="user-name" maxlength="40" placeholder="可留空" value="${escapeAttr(config?.persona.userName ?? '')}" />
+    </div>
+    <div class="setting">
+      <div class="setting-head"><span>语气</span><em id="tone-value">温和</em></div>
+      <div class="segmented" id="set-tone">
+        <button data-value="warm">温和</button>
+        <button data-value="sharp">犀利</button>
+        <button data-value="concise">简洁</button>
+        <button data-value="chuuni">中二</button>
+      </div>
+    </div>
+    <div class="setting">
+      <div class="setting-head"><span>回复长度</span><em id="length-value">标准</em></div>
+      <div class="segmented" id="set-length">
+        <button data-value="short">短</button>
+        <button data-value="normal">标准</button>
+        <button data-value="detailed">详细</button>
+      </div>
+    </div>
+    <div class="setting">
+      <div class="setting-head"><span>开场白</span></div>
+      <input class="text-input" id="greeting" maxlength="200" placeholder="留空使用默认" value="${escapeAttr(config?.greeting ?? '')}" />
     </div>
     <div class="setting">
       <div class="setting-head"><span>音量</span><em id="volume-value">${Math.round((config?.volume ?? 0.6) * 100)}%</em></div>
@@ -866,6 +1196,79 @@ function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
     });
   });
 
+  const toneLabels: Record<PetTone, string> = { warm: '温和', sharp: '犀利', concise: '简洁', chuuni: '中二' };
+  const lengthLabels: Record<ReplyLength, string> = { short: '短', normal: '标准', detailed: '详细' };
+
+  const markSegmented = (selector: string, value: string) => {
+    dom.drawerBody.querySelector(selector)?.querySelectorAll<HTMLElement>('button').forEach((button) => {
+      button.classList.toggle('active', button.dataset.value === value);
+    });
+  };
+
+  const persona = state.config?.persona;
+  if (persona) {
+    markSegmented('#set-tone', persona.tone);
+    markSegmented('#set-length', persona.replyLength);
+    const toneValue = dom.drawerBody.querySelector<HTMLElement>('#tone-value');
+    const lengthValue = dom.drawerBody.querySelector<HTMLElement>('#length-value');
+    if (toneValue) {
+      toneValue.textContent = toneLabels[persona.tone];
+    }
+    if (lengthValue) {
+      lengthValue.textContent = lengthLabels[persona.replyLength];
+    }
+  }
+
+  dom.drawerBody.querySelector('#set-tone')?.querySelectorAll<HTMLElement>('button').forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = button.dataset.value as PetTone | undefined;
+      if (!value || !state.config) {
+        return;
+      }
+      state.config.persona.tone = value;
+      markSegmented('#set-tone', value);
+      const label = dom.drawerBody.querySelector<HTMLElement>('#tone-value');
+      if (label) {
+        label.textContent = toneLabels[value];
+      }
+      post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'pet.tone', value } });
+    });
+  });
+
+  dom.drawerBody.querySelector('#set-length')?.querySelectorAll<HTMLElement>('button').forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = button.dataset.value as ReplyLength | undefined;
+      if (!value || !state.config) {
+        return;
+      }
+      state.config.persona.replyLength = value;
+      markSegmented('#set-length', value);
+      const label = dom.drawerBody.querySelector<HTMLElement>('#length-value');
+      if (label) {
+        label.textContent = lengthLabels[value];
+      }
+      post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ai.replyLength', value } });
+    });
+  });
+
+  const userNameInput = dom.drawerBody.querySelector<HTMLInputElement>('#user-name');
+  userNameInput?.addEventListener('change', () => {
+    const value = userNameInput.value.trim();
+    if (state.config) {
+      state.config.persona.userName = value;
+    }
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'pet.userName', value } });
+  });
+
+  const greetingInput = dom.drawerBody.querySelector<HTMLInputElement>('#greeting');
+  greetingInput?.addEventListener('change', () => {
+    const value = greetingInput.value.trim();
+    if (state.config) {
+      state.config.greeting = value || undefined;
+    }
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'pet.greeting', value } });
+  });
+
   const volume = dom.drawerBody.querySelector<HTMLInputElement>('#set-volume');
   const volumeValue = dom.drawerBody.querySelector<HTMLElement>('#volume-value');
   const pushVolume = debounce((value: number) => {
@@ -911,6 +1314,7 @@ function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
 el('btn-gallery').addEventListener('click', () => openDrawer('gallery'));
 el('btn-sound').addEventListener('click', () => openDrawer('sound'));
 el('btn-standards').addEventListener('click', () => openDrawer('standards'));
+el('btn-palette').addEventListener('click', () => openDrawer('palette'));
 el('btn-settings').addEventListener('click', () => openDrawer('settings'));
 dom.problemChip.addEventListener('click', () => openDrawer('problems'));
 el('btn-open-panel').addEventListener('click', () => post({ type: 'command', command: CMD.openPanel }));

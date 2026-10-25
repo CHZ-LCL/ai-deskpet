@@ -10,6 +10,7 @@
 - **形象随便换**：Live2D（Cubism 4）、VRM / GLB、单张图片 / GIF，导入即用。
 - **音效随便换**：按场景绑定自定义音效，没配就用内置合成音；支持系统 TTS 朗读。
 - **AI 后端三选一**：本机 Ollama（默认）、任意 OpenAI 兼容接口、VS Code 语言模型 API。
+- **外观随便调**：主题色板、自定义主色、背景/动效/排版、快捷按钮、自定义 CSS。
 
 > 需要 **VS Code 1.93+**（终端失败捕获依赖 Shell Integration；其它功能在更早版本也能用，但插件会要求 1.93）。
 
@@ -33,6 +34,7 @@
 | 智能检修 | 实时诊断角标、终端失败捕获、堆栈解析，解释 + 补丁 + 自动 diff |
 | 测试生成 | 识别测试框架，先列分支再写用例，覆盖空值/边界/异常路径 |
 | 文档同步 | 生成/扩写 JSDoc、Go doc、docstring；保存时检测参数漂移 |
+| 个性化 | 主题色板/自定义主色、背景·动效·排版、快捷按钮、自定义 CSS、人设语气 |
 | 诊断修复 | 读取 VS Code 诊断信息，给出可直接替换的修复代码，支持 diff 预览 |
 | 重构 / 测试 | 按目标重构选区；为选区生成测试文件 |
 | Git 提交信息 | 读 `git diff`，按 Conventional Commits 生成并一键填入提交框 |
@@ -434,6 +436,59 @@ ollama pull qwen2.5-coder:14b
 
 ---
 
+## 主题与个性化
+
+点工具栏的 **✧** 打开「个性化」，所有改动**即时预览**并写进 VS Code 设置。
+
+![个性化](docs/palette.png)
+
+### 主题色
+
+- 预设：薄荷、樱、霓虹、极简、琥珀、深海，以及「跟随 VS Code」（取当前主题的强调色）。
+- 自定义：取色器选任意 `#rrggbb`，深色梯度会自动推导（不用手填两个颜色）。
+- 换色会同时作用于按钮、气泡边框、代码内联高亮、用户消息渐变等所有强调元素。
+
+### 背景 / 动效 / 排版
+
+| 项 | 选项 |
+| --- | --- |
+| 背景 | 网格 + 渐变 / 纯色 / 极简（关光晕） |
+| 动效 | 完整 / 轻量（关呼吸、摆尾等持续动画）/ 关闭（连过渡一起关） |
+| 排版 | 紧凑 / 标准 / 宽松 |
+| 名牌 | 显示 / 隐藏 |
+
+### 快捷按钮完全可配
+
+默认是「讲解代码 / 讲透它 / 帮我修 / 写测试 / 补文档 / 查文档」，可以在面板里增删改：
+
+- **按钮文字** + **命令 id**（任意 `deskpet.*` 或 VS Code 命令）；
+- 命令填 `__docs__` 表示点击后切到「查资料」输入模式；
+- 最多 10 个，点「保存」立即生效；留空则回退到内置按钮组。
+
+### 自定义 CSS
+
+最后一段是「自定义 CSS」输入框，直接追加到桌宠 webview：
+
+```css
+/* 圆角更小、气泡更紧凑 */
+.msg { border-radius: 8px; }
+.speech { border-radius: 10px; }
+```
+
+几点边界：只作用于桌宠面板，不会影响编辑器；仍然受 webview 的 CSP 限制（`url(https://…)` 这类外部资源会被拦截）；
+最多 12000 字符。
+
+### 人设
+
+设置面板里可以改：
+
+- **怎么称呼你**：写进系统提示词；
+- **语气**：温和 / 犀利 / 简洁 / 中二（技术结论始终要求准确）；
+- **回复长度**：短（≤6 行）/ 标准 / 详细；
+- **开场白**：首次打开面板时说的第一句话。
+
+---
+
 ## 设置项
 
 | 设置 | 默认值 | 说明 |
@@ -471,6 +526,18 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.style.quotes` | `auto` | 引号：auto / single / double |
 | `deskpet.style.semicolons` | `auto` | 分号：auto / always / never |
 | `deskpet.inline.codeLens` | `true` | 函数上方的「讲解 / 重构」CodeLens |
+| `deskpet.ui.theme` | `mint` | 主题色板：`auto` / `mint` / `sakura` / `cyber` / `mono` / `amber` / `ocean` / `custom` |
+| `deskpet.ui.accent` | `#4ec9b0` | 自定义主色（theme=custom） |
+| `deskpet.ui.background` | `grid` | 背景：`grid` / `plain` / `none` |
+| `deskpet.ui.motion` | `full` | 动效：`full` / `lite` / `off` |
+| `deskpet.ui.density` | `cozy` | 排版：`compact` / `cozy` / `comfortable` |
+| `deskpet.ui.nameplate` | `true` | 显示名字·心情名牌 |
+| `deskpet.ui.quickActions` | `[]` | 快捷按钮（label + command/text） |
+| `deskpet.ui.customCss` | 空 | 追加到桌宠面板的 CSS |
+| `deskpet.pet.userName` | 空 | 桌宠怎么称呼你 |
+| `deskpet.pet.tone` | `warm` | 语气：`warm` / `sharp` / `concise` / `chuuni` |
+| `deskpet.pet.greeting` | 空 | 开场白 |
+| `deskpet.ai.replyLength` | `normal` | 回复长度：`short` / `normal` / `detailed` |
 
 ---
 

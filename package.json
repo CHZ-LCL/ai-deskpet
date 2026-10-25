@@ -605,6 +605,155 @@
           "type": "boolean",
           "default": true,
           "description": "在每个函数/方法上方显示「讲解 / 重构」的 CodeLens。"
+        },
+        "deskpet.ui.theme": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "mint",
+            "sakura",
+            "cyber",
+            "mono",
+            "amber",
+            "ocean",
+            "custom"
+          ],
+          "enumDescriptions": [
+            "跟随 VS Code 的强调色",
+            "薄荷绿",
+            "樱花粉",
+            "霓虹紫",
+            "极简灰",
+            "琥珀橙",
+            "深海蓝",
+            "使用 deskpet.ui.accent 指定的主色"
+          ],
+          "default": "mint",
+          "description": "桌宠面板的主题色板。"
+        },
+        "deskpet.ui.accent": {
+          "type": "string",
+          "default": "#4ec9b0",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "自定义主色（theme=custom 时生效），十六进制 #rrggbb。"
+        },
+        "deskpet.ui.background": {
+          "type": "string",
+          "enum": [
+            "grid",
+            "plain",
+            "none"
+          ],
+          "enumDescriptions": [
+            "网格纹理 + 渐变",
+            "纯色渐变，无网格",
+            "完全纯色，关闭光晕"
+          ],
+          "default": "grid",
+          "description": "面板背景样式。"
+        },
+        "deskpet.ui.motion": {
+          "type": "string",
+          "enum": [
+            "full",
+            "lite",
+            "off"
+          ],
+          "enumDescriptions": [
+            "完整动效",
+            "关闭呼吸/摆尾等持续动画",
+            "关闭所有动画与过渡"
+          ],
+          "default": "full",
+          "description": "桌宠动效强度。"
+        },
+        "deskpet.ui.density": {
+          "type": "string",
+          "enum": [
+            "compact",
+            "cozy",
+            "comfortable"
+          ],
+          "enumDescriptions": [
+            "紧凑",
+            "标准",
+            "宽松"
+          ],
+          "default": "cozy",
+          "description": "对话区排版密度。"
+        },
+        "deskpet.ui.nameplate": {
+          "type": "boolean",
+          "default": true,
+          "description": "在形象下方显示「名字 · 心情」名牌。"
+        },
+        "deskpet.ui.quickActions": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "label"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "按钮文字"
+              },
+              "command": {
+                "type": "string",
+                "description": "点击后执行的命令 id"
+              },
+              "text": {
+                "type": "string",
+                "description": "点击后直接发送的文本；填 __docs__ 表示切换到查资料模式"
+              }
+            }
+          },
+          "description": "对话区快捷按钮。留空使用内置按钮组。"
+        },
+        "deskpet.ui.customCss": {
+          "type": "string",
+          "default": "",
+          "editPresentation": "multilineText",
+          "description": "追加到桌宠 webview 的自定义 CSS（仅作用于桌宠面板，最多 12000 字符）。"
+        },
+        "deskpet.pet.userName": {
+          "type": "string",
+          "default": "",
+          "description": "桌宠怎么称呼你。留空则用「你」。"
+        },
+        "deskpet.pet.tone": {
+          "type": "string",
+          "enum": [
+            "warm",
+            "sharp",
+            "concise",
+            "chuuni"
+          ],
+          "enumDescriptions": [
+            "温和、鼓励",
+            "直接、犀利",
+            "极简",
+            "偶尔中二"
+          ],
+          "default": "warm",
+          "description": "说话风格。"
+        },
+        "deskpet.pet.greeting": {
+          "type": "string",
+          "default": "",
+          "description": "首次打开面板时的开场白。留空使用默认。"
+        },
+        "deskpet.ai.replyLength": {
+          "type": "string",
+          "enum": [
+            "short",
+            "normal",
+            "detailed"
+          ],
+          "default": "normal",
+          "description": "默认回复长度。"
         }
       }
     }

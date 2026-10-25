@@ -41,6 +41,7 @@
           <button class="icon-btn" id="btn-gallery" title="形象库">◍</button>
           <button class="icon-btn" id="btn-sound" title="音效库">♪</button>
           <button class="icon-btn" id="btn-standards" title="代码规范">§</button>
+          <button class="icon-btn" id="btn-palette" title="个性化">✧</button>
           <button class="icon-btn" id="btn-settings" title="设置">⚙</button>
           <button class="icon-btn" id="btn-open-panel" title="在编辑器标签中打开">⤢</button>
         </div>
@@ -118,6 +119,25 @@
         aiProviderLabel: 'Ollama · qwen2.5-coder:14b',
         aiModel: 'qwen2.5-coder:14b',
         contextLabel: '128 文件 · 356 块',
+        interruption: 'balanced',
+        theme: {
+          id: 'mint',
+          accent: '#4ec9b0',
+          background: 'grid',
+          motion: 'full',
+          density: 'cozy',
+          nameplate: true,
+          customCss: '',
+        },
+        quickActions: [
+          { label: '讲解代码', command: 'deskpet.explainSelection' },
+          { label: '讲透它', command: 'deskpet.teachSelection' },
+          { label: '帮我修', command: 'deskpet.fixSelection' },
+          { label: '写测试', command: 'deskpet.addTests' },
+          { label: '补文档', command: 'deskpet.generateDocs' },
+          { label: '查文档', text: '__docs__' },
+        ],
+        persona: { userName: '', tone: 'warm', replyLength: 'normal' },
         rendererScripts: {},
       },
       snapshot: { affection: 236, level: 3, mood: 'happy', totalClicks: 12, totalChats: 8, daysTogether: 4 },
@@ -196,6 +216,9 @@
       }, 400);
       if (params.has('settings')) {
         setTimeout(() => document.getElementById('btn-settings')?.click(), 700);
+      }
+      if (params.has('palette')) {
+        setTimeout(() => document.getElementById('btn-palette')?.click(), 700);
       }
       if (params.has('standards')) {
         setTimeout(() => {

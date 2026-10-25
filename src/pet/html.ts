@@ -30,6 +30,7 @@ export function renderWebviewHtml(webview: vscode.Webview, context: vscode.Exten
         <button class="icon-btn" id="btn-gallery" title="形象库">◍</button>
         <button class="icon-btn" id="btn-sound" title="音效库">♪</button>
         <button class="icon-btn" id="btn-standards" title="代码规范">§</button>
+        <button class="icon-btn" id="btn-palette" title="个性化">✧</button>
         <button class="icon-btn" id="btn-settings" title="设置">⚙</button>
         <button class="icon-btn" id="btn-open-panel" title="在编辑器标签中打开">⤢</button>
       </div>

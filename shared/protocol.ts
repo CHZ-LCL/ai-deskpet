@@ -9,6 +9,75 @@ export type RendererKind = 'builtin' | 'image' | 'live2d' | 'vrm';
 
 export type SoundSlot = 'click' | 'happy' | 'alert' | 'error' | 'switch';
 
+export type PetTone = 'warm' | 'sharp' | 'concise' | 'chuuni';
+export type ReplyLength = 'short' | 'normal' | 'detailed';
+
+export type ThemeId =
+  | 'auto'
+  | 'mint'
+  | 'sakura'
+  | 'cyber'
+  | 'mono'
+  | 'amber'
+  | 'ocean'
+  | 'custom';
+
+export type BackgroundStyle = 'grid' | 'plain' | 'none';
+export type MotionLevel = 'full' | 'lite' | 'off';
+export type Density = 'compact' | 'cozy' | 'comfortable';
+
+export interface ThemePreset {
+  id: ThemeId;
+  label: string;
+  accent: string;
+  warm: string;
+  glow: number;
+}
+
+export const THEME_PRESETS: ThemePreset[] = [
+  { id: 'auto', label: '跟随 VS Code', accent: '', warm: '#ffb27a', glow: 0.55 },
+  { id: 'mint', label: '薄荷', accent: '#4ec9b0', warm: '#ffb27a', glow: 0.55 },
+  { id: 'sakura', label: '樱', accent: '#ff9db3', warm: '#ffd08a', glow: 0.5 },
+  { id: 'cyber', label: '霓虹', accent: '#7c5cff', warm: '#22d3ee', glow: 0.7 },
+  { id: 'mono', label: '极简', accent: '#c8c8c8', warm: '#9aa0a6', glow: 0.25 },
+  { id: 'amber', label: '琥珀', accent: '#f0a35e', warm: '#ffd166', glow: 0.5 },
+  { id: 'ocean', label: '深海', accent: '#3fa7ff', warm: '#6ee7d8', glow: 0.6 },
+  { id: 'custom', label: '自定义', accent: '#4ec9b0', warm: '#ffb27a', glow: 0.55 },
+];
+
+export interface PetTheme {
+  id: ThemeId;
+  /** theme=custom 时使用的主色 */
+  accent: string;
+  background: BackgroundStyle;
+  motion: MotionLevel;
+  density: Density;
+  nameplate: boolean;
+  customCss: string;
+}
+
+export interface QuickAction {
+  label: string;
+  command?: string;
+  text?: string;
+}
+
+export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
+  { label: '讲解代码', command: 'deskpet.explainSelection' },
+  { label: '讲透它', command: 'deskpet.teachSelection' },
+  { label: '帮我修', command: 'deskpet.fixSelection' },
+  { label: '写测试', command: 'deskpet.addTests' },
+  { label: '补文档', command: 'deskpet.generateDocs' },
+  { label: '查文档', text: '__docs__' },
+];
+
+export interface PetPersona {
+  userName: string;
+  tone: PetTone;
+  replyLength: ReplyLength;
+}
+
+
 /** 主动提醒的打扰程度 */
 export type InterruptionLevel = 'quiet' | 'balanced' | 'chatty';
 
@@ -72,6 +141,10 @@ export interface PetConfig {
   contextLabel?: string;
   /** 主动提醒的打扰程度 */
   interruption: InterruptionLevel;
+  theme: PetTheme;
+  quickActions: QuickAction[];
+  persona: PetPersona;
+  greeting?: string;
   /** 按需加载的渲染器脚本地址（webview 资源 url） */
   rendererScripts: { live2d?: string; vrm?: string };
 }
