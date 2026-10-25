@@ -1,4 +1,4 @@
-# AI DeskPet
+# Git-Gud-AI · DeskPet
 
 > An AI coding buddy that lives in VS Code: it chats, reads your code, helps you finish the bug, and can wear your own Live2D, 3D, or image avatar.
 

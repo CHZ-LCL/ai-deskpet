@@ -1,4 +1,4 @@
-# AI 桌宠 · DeskPet
+# Git-Gud-AI · AI 桌宠
 
 > 一只住在 VS Code 里的编程搭子：会聊天、会看你的代码、会陪你把 bug 修完，还能换成你自己画的 Live2D 或 3D 形象。
 

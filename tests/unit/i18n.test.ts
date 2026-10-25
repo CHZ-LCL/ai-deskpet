@@ -83,7 +83,7 @@ describe('manifest localization', () => {
 
   it('keeps both language files in sync', () => {
     assert.deepEqual(Object.keys(en).sort(), Object.keys(zh).sort());
-    assert.equal(en.displayName, 'AI DeskPet');
+    assert.equal(en.displayName, 'Git-Gud-AI · DeskPet');
     assert.match(zh.displayName, /桌宠/);
   });
 });
