@@ -143,6 +143,7 @@ const EN: Record<string, string> = {
   大圆角: 'Large radius',
 
   // 设置
+  语言: 'Language',
   语音朗读回复: 'Read replies aloud',
   打扰程度: 'Interruptions',
   平衡: 'Balanced',

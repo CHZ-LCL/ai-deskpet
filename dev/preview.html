@@ -116,6 +116,7 @@
         tts: false,
         ttsRate: 1,
         language: 'zh',
+        languageSetting: 'zh',
         assets: { sounds: {}, builtinImageUri: '../assets/default/pet.png' },
         aiProviderLabel: 'Ollama · qwen2.5-coder:14b',
         aiModel: 'qwen2.5-coder:14b',
@@ -170,6 +171,7 @@
       const en = params.get('lang') === 'en';
       if (en) {
         init.config.language = 'en';
+        init.config.languageSetting = 'en';
         init.config.quickActions = [
           { label: 'Explain', command: 'deskpet.explainSelection' },
           { label: 'Teach me', command: 'deskpet.teachSelection' },

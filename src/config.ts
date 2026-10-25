@@ -3,6 +3,7 @@ import type {
   BackgroundStyle,
   Density,
   InterruptionLevel,
+  LanguageSetting,
   MotionLevel,
   PetConfig,
   PetPersona,
@@ -45,6 +46,9 @@ export async function buildPetConfig(
 
   const greeting = (config.get<string>('pet.greeting', '') ?? '').trim().slice(0, 200);
   const language = resolveLanguage();
+  const rawLanguage = config.get<string>('ui.language', 'auto');
+  const languageSetting: LanguageSetting =
+    rawLanguage === 'zh' || rawLanguage === 'en' ? rawLanguage : 'auto';
 
   return {
     name: config.get<string>('pet.name', '小豆'),
@@ -54,6 +58,7 @@ export async function buildPetConfig(
     tts: config.get<boolean>('pet.tts', false),
     ttsRate: config.get<number>('pet.ttsRate', 1),
     language,
+    languageSetting,
     assets: await assets.buildAssets(webview),
     aiProviderLabel: providerLabel(ai),
     aiModel: ai.model,

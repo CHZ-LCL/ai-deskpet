@@ -287,7 +287,9 @@ function onInit(message: Extract<HostMessage, { type: 'init' }>): void {
 // ------------------------------------------------------------------ 配置
 
 function applyConfig(config: PetConfig): void {
-  const languageChanged = config.language !== state.config?.language;
+  const languageChanged =
+    config.language !== state.config?.language ||
+    config.languageSetting !== state.config?.languageSetting;
   setLanguage(config.language);
   state.config = config;
   dom.petName.textContent = config.name;
@@ -1281,6 +1283,14 @@ function renderSettings(): void {
   const snapshot = state.snapshot;
   dom.drawerBody.innerHTML = `
     <div class="setting">
+      <div class="setting-head"><span>${L('语言')}</span><em id="language-value">${pick('跟随系统', 'Auto')}</em></div>
+      <div class="segmented" id="set-language">
+        <button data-value="auto">${pick('跟随系统', 'Auto')}</button>
+        <button data-value="zh">中文</button>
+        <button data-value="en">English</button>
+      </div>
+    </div>
+    <div class="setting">
       <div class="setting-head"><span>${L('语音朗读回复')}</span></div>
       <label class="switch"><input type="checkbox" id="set-tts" ${config?.tts ? 'checked' : ''}/><span></span></label>
     </div>
@@ -1336,6 +1346,34 @@ function renderSettings(): void {
       <button class="ghost-btn" id="btn-goto-settings">${L('打开全部设置')}</button>
       <button class="ghost-btn danger" id="btn-reset-pet">${L('重置桌宠')}</button>
     </div>`;
+
+  const languageLabels: Record<'auto' | 'zh' | 'en', string> = {
+    auto: pick('跟随系统', 'Auto'),
+    zh: '中文',
+    en: 'English',
+  };
+  const languageGroup = dom.drawerBody.querySelector('#set-language');
+  const languageValue = dom.drawerBody.querySelector<HTMLElement>('#language-value');
+  const markLanguage = () => {
+    const current = state.config?.languageSetting ?? 'auto';
+    languageGroup?.querySelectorAll<HTMLElement>('button').forEach((button) => {
+      button.classList.toggle('active', button.dataset.value === current);
+    });
+    if (languageValue) {
+      languageValue.textContent = languageLabels[current];
+    }
+  };
+  markLanguage();
+  languageGroup?.querySelectorAll<HTMLElement>('button').forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = button.dataset.value;
+      if (!value || !state.config) {
+        return;
+      }
+      // 扩展会回推新配置，applyConfig 里统一切换文案
+      post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.language', value } });
+    });
+  });
 
   const tts = dom.drawerBody.querySelector<HTMLInputElement>('#set-tts');
   tts?.addEventListener('change', () => {

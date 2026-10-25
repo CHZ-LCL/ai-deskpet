@@ -13,6 +13,8 @@ export type PetTone = 'warm' | 'sharp' | 'concise' | 'chuuni';
 export type ReplyLength = 'short' | 'normal' | 'detailed';
 /** 面板与 AI 回复的语言：跟随 VS Code、强制中文或强制英文 */
 export type PetLanguage = 'zh' | 'en';
+/** 用户设置值，auto 表示跟随 VS Code */
+export type LanguageSetting = PetLanguage | 'auto';
 
 export type ThemeId =
   | 'auto'
@@ -156,6 +158,8 @@ export interface PetConfig {
   ttsRate: number;
   /** 面板与 AI 回复使用的语言 */
   language: PetLanguage;
+  /** 原始设置值，用于设置面板高亮 auto/zh/en */
+  languageSetting: LanguageSetting;
   assets: PetAssets;
   aiProviderLabel: string;
   aiModel: string;

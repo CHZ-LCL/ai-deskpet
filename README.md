@@ -13,7 +13,7 @@
 - **音效随便换**：按场景绑定自定义音效，没配就用内置合成音；支持系统 TTS 朗读。
 - **AI 后端三选一**：本机 Ollama（默认）、任意 OpenAI 兼容接口、VS Code 语言模型 API。
 - **外观随便调**：主题色板、自定义主色、背景/动效/排版、快捷按钮、自定义 CSS。
-- **中英双语**：默认跟随 VS Code 显示语言，也可以用 `deskpet.ui.language` 强制中文或 English。
+- **中英双语**：默认跟随 VS Code 显示语言，也可以用 `deskpet.ui.language` 强制中文或 English；面板 **⚙ 设置 → 语言** 可直接切换。
 
 > 需要 **VS Code 1.93+**（终端失败捕获依赖 Shell Integration；其它功能在更早版本也能用，但插件会要求 1.93）。
 
