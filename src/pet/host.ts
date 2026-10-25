@@ -52,6 +52,66 @@ const CLICK_LINES_EN = [
   'Want me to look something up in the docs?',
 ];
 
+/**
+ * 根据 AI 回复文本推断合适的 Live2D 动作/表情。
+ * 让桌宠的形象能随对话内容做出相应反应，而不仅仅是固定的 happy。
+ */
+export function inferActionFromText(text: string): PetAction {
+  const lower = text.toLowerCase();
+  const zh = text;
+
+  // 报错 / 警告 / 问题 → alert
+  if (
+    /(错误|报错|异常|失败|bug|error|warn|警告|注意|小心|问题|修复|崩溃|exception|traceback|失败)/i.test(lower) ||
+    /(错误|报错|异常|失败|警告|注意|小心|问题|崩溃)/.test(zh)
+  ) {
+    return 'alert';
+  }
+
+  // 思考 / 考虑 / 分析 → think
+  if (
+    /(思考|考虑|分析|让我想|嗯|看来|应该|可能|大概|推测|思索|斟酌|think|thinking|consider|analyze|hmm|嗯…|让我看看)/i.test(lower) ||
+    /(思考|考虑|分析|让我想|看来|应该|可能|推测|思索|斟酌)/.test(zh)
+  ) {
+    return 'think';
+  }
+
+  // 问候 / 拜拜 → wave
+  if (
+    /(你好|您好|嗨|嗨呀|再见|拜拜|再见|hello|hi|hey|bye|goodbye|打招呼|问候)/i.test(lower) ||
+    /(你好|您好|嗨|再见|拜拜|打招呼|问候)/.test(zh)
+  ) {
+    return 'wave';
+  }
+
+  // 开心 / 成功 / 赞扬 → happy
+  if (
+    /(太棒|太好了|完美|成功|搞定|解决了|厉害|赞|开心|高兴|喜欢|great|excellent|perfect|success|solved|happy|awesome|nice|好极了)/i.test(lower) ||
+    /(太棒|太好了|完美|成功|搞定|解决了|厉害|开心|高兴|喜欢|好极了)/.test(zh)
+  ) {
+    return 'happy';
+  }
+
+  // 害羞 / 尴尬 → shy
+  if (
+    /(害羞|尴尬|不好意思|抱歉|对不起|抱歉|shy|embarrassing|sorry|抱歉)/i.test(lower) ||
+    /(害羞|尴尬|不好意思|抱歉|对不起)/.test(zh)
+  ) {
+    return 'shy';
+  }
+
+  // 休息 / 睡觉 → sleep
+  if (
+    /(睡觉|休息|晚安|困了|打盹|sleep|nap|休息一下|good night|bye|再聊)/i.test(lower) ||
+    /(睡觉|休息|晚安|困了|打盹|休息一下)/.test(zh)
+  ) {
+    return 'sleep';
+  }
+
+  // 默认：开心/正常
+  return 'happy';
+}
+
 const CODE_HINT = /(代码|函数|报错|错误|异常|这个|这段|这里|上面|文件|变量|类|接口|实现|测试|优化|重构|解释|修复|写个|写一|怎么|为什么|bug|error|code|function|api|type|import|traceback|exception)/i;
 
 /** 英文界面下所有任务提示词仍是中文，这里再加一道语言约束，保证回复是英文。 */
@@ -145,7 +205,7 @@ export class PetHost implements vscode.Disposable {
   }
 
   say(text: string, options: SayOptions = {}): void {
-    const action = options.action ?? 'happy';
+    const action = options.action ?? inferActionFromText(text);
     this.state.setMood(action);
     this.broadcast({
       type: 'say',
@@ -473,7 +533,7 @@ export class PetHost implements vscode.Disposable {
       this.state.addAffection(4);
       const after = this.state.snapshot();
       this.broadcast({ type: 'snapshot', snapshot: after });
-      this.react(options.action ?? 'happy');
+      this.react(options.action ?? inferActionFromText(acc));
       if (after.level > before.level) {
         this.say(
           L(
