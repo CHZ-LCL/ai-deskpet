@@ -352,6 +352,31 @@ export function documentationPrompt(options: {
     .join('\n');
 }
 
+export function fixAllPrompt(options: {
+  file: string;
+  languageId: string;
+  diagnostics: string;
+  code: string;
+}): string {
+  return [
+    `请修复 ${options.file} 里的编译/类型错误。`,
+    '',
+    '编辑器报告的问题：',
+    options.diagnostics,
+    '',
+    '要求：',
+    '1. 只修这些错误，不要重构无关代码，不要改公共 API，不要换风格。',
+    '2. 输出**完整文件**的一个代码块：保留所有原有 import/export、注释和未涉及错误的逻辑，不能省略、不能用“…其余不变”。',
+    '3. 如果某个错误无法在不改变行为的前提下修复，保留原样，并在代码块外用一句话说明。',
+    '4. 不要引入新依赖。',
+    '',
+    '当前完整文件：',
+    '```' + options.languageId,
+    options.code,
+    '```',
+  ].join('\n');
+}
+
 export function reviewPrompt(file: string, languageId: string, code: string): string {  return [
     `请对下面这段 ${languageId} 代码（${file}）做一次静态检修。这不是让你重写，而是找问题。`,
     '',

@@ -18,6 +18,7 @@ import {
 } from '../ai/prompts';
 import type { PetHost } from '../pet/host';
 import { checkStyle, inferStyleProfile } from '../standards/profile';
+import { getFixHistory } from '../history/fixHistory';
 import { isPatchStale } from '../inline/patch';
 import { truncate } from '../util';
 
@@ -295,12 +296,15 @@ export function bindAdviceActions(host: PetHost): void {
       }
       const edit = new vscode.WorkspaceEdit();
       edit.replace(item.documentUri, item.range, item.code);
+      const beforeText = document.getText();
       const ok = await vscode.workspace.applyEdit(edit);
       if (!ok) {
         host.resolveAdvice(id, action, false);
         host.notice('替换没有成功，文件可能已经变化，请重新生成建议。', 'warn');
         return;
       }
+      const afterText = document.getText();
+      await getFixHistory()?.add(item.documentUri, beforeText, afterText, item.card.title);
       try {
         await document.save();
       } catch {

@@ -10,6 +10,11 @@ const EXPECTED_COMMANDS = [
   'deskpet.explainSelection',
   'deskpet.teachSelection',
   'deskpet.fixSelection',
+  'deskpet.explainDiagnostic',
+  'deskpet.fixDiagnostic',
+  'deskpet.fixAll',
+  'deskpet.undoLastFix',
+  'deskpet.fixHistory',
   'deskpet.inlineChat',
   'deskpet.inlineApply',
   'deskpet.inlineDiff',
@@ -22,6 +27,9 @@ const EXPECTED_COMMANDS = [
   'deskpet.analyzeFailure',
   'deskpet.reindex',
   'deskpet.quickSetup',
+  'deskpet.exportTheme',
+  'deskpet.importTheme',
+  'deskpet.clearWorkspaceTheme',
   'deskpet.updateSetting',
 ];
 

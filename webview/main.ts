@@ -768,21 +768,24 @@ function renderProblems(): void {
     dom.drawerBody.innerHTML =
       '<div class="empty-state">当前文件没有诊断问题。<br/>可以点下面的「体检整个文件」做一次静态检查。</div>';
   } else {
-    dom.drawerBody.innerHTML = `<div class="problem-list">${state.problems
-      .map(
-        (item) => `<div class="problem-row sev-${item.severity}">
-          <div class="problem-head">
-            <span class="sev-dot"></span>
-            <span class="problem-line">L${item.line}</span>
-            <span class="problem-msg">${escapeText(item.message)}</span>
-          </div>
-          <div class="problem-actions">
-            <button data-problem-action="explain" data-line="${item.line}">解释</button>
-            <button data-problem-action="fix" data-line="${item.line}">修复</button>
-          </div>
-        </div>`,
-      )
-      .join('')}</div>`;
+    const errorCount = state.problems.filter((item) => item.severity === 'error').length;
+    dom.drawerBody.innerHTML = `
+      ${errorCount > 0 ? `<button class="primary-btn fix-all-btn" id="fix-all">一键修复全部错误（${errorCount}）</button>` : ''}
+      <div class="problem-list">${state.problems
+        .map(
+          (item) => `<div class="problem-row sev-${item.severity}">
+            <div class="problem-head">
+              <span class="sev-dot"></span>
+              <span class="problem-line">L${item.line}</span>
+              <span class="problem-msg">${escapeText(item.message)}</span>
+            </div>
+            <div class="problem-actions">
+              <button data-problem-action="explain" data-line="${item.line}">解释</button>
+              <button data-problem-action="fix" data-line="${item.line}">修复</button>
+            </div>
+          </div>`,
+        )
+        .join('')}</div>`;
   }
 
   dom.drawerFoot.innerHTML = `<div class="drawer-actions">
@@ -807,6 +810,11 @@ function renderProblems(): void {
       post({ type: 'command', command, args: { line } });
       closeDrawer();
     });
+  });
+
+  dom.drawerBody.querySelector('#fix-all')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.fixAll });
+    closeDrawer();
   });
 }
 

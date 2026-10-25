@@ -98,6 +98,21 @@
         "category": "AI 桌宠"
       },
       {
+        "command": "deskpet.fixAll",
+        "title": "一键修复当前文件的错误",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.undoLastFix",
+        "title": "回退最近一次 AI 修改",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.fixHistory",
+        "title": "查看 AI 修改历史…",
+        "category": "AI 桌宠"
+      },
+      {
         "command": "deskpet.analyzeFailure",
         "title": "分析最近一次命令失败",
         "category": "AI 桌宠"
@@ -253,6 +268,10 @@
         {
           "command": "deskpet.fixDiagnostic",
           "group": "deskpet@5"
+        },
+        {
+          "command": "deskpet.fixAll",
+          "group": "deskpet@5b"
         },
         {
           "command": "deskpet.reviewFile",
@@ -491,6 +510,13 @@
           "type": "boolean",
           "default": true,
           "description": "从报错/诊断生成修复时，自动打开修改前后的并排 diff。"
+        },
+        "deskpet.fix.maxAutoDiagnostics": {
+          "type": "number",
+          "default": 6,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "「一键修复当前文件的错误」最多处理的错误数量。"
         },
         "deskpet.debug.watchTerminal": {
           "type": "boolean",

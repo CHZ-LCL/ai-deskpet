@@ -4,6 +4,9 @@ import { bindAdviceActions, diffContentProvider, focusPet, registerAssistCommand
 import { registerDocCommands } from './commands/docs';
 import { registerTestCommands } from './commands/tests';
 import { registerThemeCommands } from './commands/theme';
+import { registerFixAllCommand } from './commands/fixAll';
+import { registerHistoryCommands } from './commands/history';
+import { initFixHistory } from './history/fixHistory';
 import { registerDebugCommands } from './commands/debug';
 import { registerStandardsCommands } from './commands/standards';
 import { registerInlineChat } from './inline/chat';
@@ -24,6 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const assets = new AssetStore(context);
   const state = new PetState(context);
   const project = new ProjectContext(context);
+  initFixHistory(context);
   const host = new PetHost(context, assets, state, project);
   const viewProvider = new PetViewProvider(context, host);
 
@@ -95,6 +99,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(...registerTestCommands(host));
   context.subscriptions.push(...registerDocCommands(host));
   context.subscriptions.push(...registerThemeCommands(host, context));
+  context.subscriptions.push(...registerFixAllCommand(host));
+  context.subscriptions.push(...registerHistoryCommands(host));
   registerInlineChat(context, host);
   registerInlineCodeLens(context);
   bindAdviceActions(host);

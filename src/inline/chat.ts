@@ -6,6 +6,7 @@ import { checkStyle, inferStyleProfile } from '../standards/profile';
 import { showProposedDiff } from '../commands/assist';
 import { enclosingRange } from '../commands/debug';
 import type { PetHost } from '../pet/host';
+import { getFixHistory } from '../history/fixHistory';
 import { isPatchStale } from './patch';
 
 interface InlinePatch {
@@ -230,12 +231,15 @@ async function applyInline(id?: string): Promise<void> {
     return;
   }
 
+  const beforeText = document.getText();
   const edit = new vscode.WorkspaceEdit();
   edit.replace(item.uri, item.range, item.code);
   if (!(await vscode.workspace.applyEdit(edit))) {
     vscode.window.showWarningMessage('替换失败，请重试。');
     return;
   }
+  const afterText = document.getText();
+  await getFixHistory()?.add(item.uri, beforeText, afterText, '行内修改');
   try {
     await document.save();
   } catch {
