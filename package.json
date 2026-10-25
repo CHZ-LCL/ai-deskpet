@@ -30,12 +30,12 @@
   "icon": "assets/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Git-Gud-AI/ai-deskpet.git"
+    "url": "https://github.com/CHZ-LCL/ai-deskpet.git"
   },
   "bugs": {
-    "url": "https://github.com/Git-Gud-AI/ai-deskpet/issues"
+    "url": "https://github.com/CHZ-LCL/ai-deskpet/issues"
   },
-  "homepage": "https://github.com/Git-Gud-AI/ai-deskpet#readme",
+  "homepage": "https://github.com/CHZ-LCL/ai-deskpet#readme",
   "activationEvents": [
     "onStartupFinished"
   ],

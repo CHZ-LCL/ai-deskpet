@@ -57,7 +57,7 @@
 ### 从源码运行
 
 ```bash
-git clone https://github.com/Git-Gud-AI/ai-deskpet.git
+git clone https://github.com/CHZ-LCL/ai-deskpet.git
 cd ai-deskpet
 npm install
 npm run compile
@@ -806,7 +806,7 @@ git init
 git add .
 git commit -m "feat: initial release"
 git branch -M main
-git remote add origin https://github.com/Git-Gud-AI/ai-deskpet.git
+git remote add origin https://github.com/CHZ-LCL/ai-deskpet.git
 git push -u origin main
 ```
 

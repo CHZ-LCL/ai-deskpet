@@ -53,7 +53,7 @@ English | [简体中文](README.md) · Published by **Git-Gud-AI**
 ### Run from source
 
 ```bash
-git clone https://github.com/Git-Gud-AI/ai-deskpet.git
+git clone https://github.com/CHZ-LCL/ai-deskpet.git
 cd ai-deskpet
 npm install
 npm run compile
