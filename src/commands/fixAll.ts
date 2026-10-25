@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import { capabilityMatches, readCapability } from '../ai/capability';
@@ -23,7 +24,7 @@ export function registerFixAllCommand(host: PetHost, context: vscode.ExtensionCo
 async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要修复的文件。', { action: 'think' });
+    host.say(L('先打开要修复的文件。', `Open the file to fix first.`), { action: 'think' });
     return;
   }
   const document = editor.document;
@@ -36,7 +37,7 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
     .slice(0, limit);
 
   if (!diagnostics.length) {
-    host.say('这个文件没有错误，干净得很。', { action: 'happy' });
+    host.say(L('这个文件没有错误，干净得很。', `This file has no errors — it’s clean.`), { action: 'happy' });
     return;
   }
 
@@ -50,7 +51,7 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
 
   if (document.lineCount > maxLines || before.length > maxChars) {
     host.say(
-      `文件有点大（${document.lineCount} 行），当前上限是 ${maxLines} 行 / ${maxChars} 字符。` +
+      L(`文件有点大（${document.lineCount} 行），当前上限是 ${maxLines} 行 / ${maxChars} 字符。`, `This file is large (${document.lineCount} lines); the current limit is ${maxLines} lines / ${maxChars} characters.`) +
         (verified ? '建议用问题清单逐条修复。' : '先运行「验证模型的全文修改能力」可以放宽到 1200 行。'),
       { action: 'think' },
     );
@@ -82,7 +83,7 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
 
   const code = parseAdvice(reply).code;
   if (!isFullFileRewrite(before, code)) {
-    host.notice('模型没有返回完整文件，改为给出补丁卡片，避免误删代码。', 'warn');
+    host.notice(L('模型没有返回完整文件，改为给出补丁卡片，避免误删代码。', `The model did not return the full file, so I’ll show a patch card instead to avoid deleting code.`), 'warn');
     const range = await enclosingRange(document, diagnostics[0].range.start.line);
     await presentPatch(host, document, snippetFromRange(document, range), reply, '报错修复', {
       autoDiff: true,
@@ -94,7 +95,7 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
   const edit = new vscode.WorkspaceEdit();
   edit.replace(document.uri, full, code);
   if (!(await vscode.workspace.applyEdit(edit))) {
-    host.notice('应用失败，请重试。', 'warn');
+    host.notice(L('应用失败，请重试。', `Apply failed — please try again.`), 'warn');
     return;
   }
 
@@ -112,7 +113,7 @@ async function fixAll(host: PetHost, context: vscode.ExtensionContext): Promise<
     // 用户可以手动保存
   }
 
-  host.say(`修好了 ${diagnostics.length} 处，检查一下有没有新问题。`, { action: 'happy' });
+  host.say(L(`修好了 ${diagnostics.length} 处，检查一下有没有新问题。`, `Fixed ${diagnostics.length} issues — check for anything new.`), { action: 'happy' });
 
   const diff = await verifyAfterEdit(host, document, baseline, meta);
   if (diff.introduced.length) {

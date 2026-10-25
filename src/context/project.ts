@@ -11,6 +11,7 @@ import {
   type RawChunk,
 } from './ranking';
 import type { StyleProfile } from '../standards/rules';
+import { L } from '../i18n';
 /** 参与索引的源码/配置后缀。 */
 const SOURCE_EXTENSIONS = [
   'ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs', 'vue', 'svelte', 'astro',
@@ -109,7 +110,10 @@ export class ProjectContext implements vscode.Disposable {
     if (this.status !== 'ready') {
       return '未索引';
     }
-    return `${this.stats.files} 文件 · ${this.stats.chunks} 块`;
+    return L(
+      `${this.stats.files} 文件 · ${this.stats.chunks} 块`,
+      `${this.stats.files} files · ${this.stats.chunks} chunks`,
+    );
   }
 
   dispose(): void {
@@ -536,7 +540,7 @@ export class ProjectContext implements vscode.Disposable {
       .slice(0, 4)
       .map(([ext, count]) => `${ext} ${Math.round((count / total) * 100)}%`);
     if (langs.length) {
-      lines.push(`- 语言分布：${langs.join('，')}`);
+      lines.push(L(`- 语言分布：${langs.join('，')}`, `- Languages: ${langs.join(', ')}`));
     }
 
     // 文件命名风格
@@ -556,7 +560,12 @@ export class ProjectContext implements vscode.Disposable {
     const topStyle = Object.entries(styles).sort((left, right) => right[1] - left[1])[0];
     if (topStyle && topStyle[1] > 0) {
       const label: Record<string, string> = { kebab: 'kebab-case', snake: 'snake_case', camel: 'camelCase', pascal: 'PascalCase' };
-      lines.push(`- 文件名：${label[topStyle[0]] ?? topStyle[0]} 为主`);
+      lines.push(
+        L(
+          `- 文件名：${label[topStyle[0]] ?? topStyle[0]} 为主`,
+          `- File names: mostly ${label[topStyle[0]] ?? topStyle[0]}`,
+        ),
+      );
     }
 
     // 测试文件命名
@@ -568,7 +577,7 @@ export class ProjectContext implements vscode.Disposable {
     ];
     for (const pattern of testPatterns) {
       if ([...this.files.keys()].some((rel) => pattern.re.test(path.posix.basename(rel)))) {
-        lines.push(`- 测试文件：${pattern.name}`);
+        lines.push(L(`- 测试文件：${pattern.name}`, `- Test files: ${pattern.name}`));
         break;
       }
     }
@@ -613,21 +622,36 @@ export class ProjectContext implements vscode.Disposable {
     }
 
     const topWidth = [...widthCounts.entries()].sort((left, right) => right[1] - left[1])[0];
-    const indentText = tabs > spaces ? 'Tab' : topWidth ? `${topWidth[0]} 空格` : '2 空格';
+    const indentText =
+      tabs > spaces
+        ? 'Tab'
+        : topWidth
+          ? L(`${topWidth[0]} 空格`, `${topWidth[0]} spaces`)
+          : L('2 空格', '2 spaces');
     if (spaces || tabs) {
-      lines.push(`- 缩进：${indentText}`);
+      lines.push(L(`- 缩进：${indentText}`, `- Indentation: ${indentText}`));
     }
 
     const quoteStyle = single || double ? (single >= double * 1.2 ? 'single' : double >= single * 1.2 ? 'double' : 'either') : 'either';
     if (quoteStyle !== 'either') {
-      lines.push(`- 引号：以${quoteStyle === 'single' ? '单引号' : '双引号'}为主`);
+      lines.push(
+        L(
+          `- 引号：以${quoteStyle === 'single' ? '单引号' : '双引号'}为主`,
+          `- Quotes: mostly ${quoteStyle === 'single' ? 'single' : 'double'} quotes`,
+        ),
+      );
     }
 
     let semicolonStyle: 'always' | 'never' | 'either' = 'either';
     if (statements > 20) {
       const ratio = semicolons / statements;
       semicolonStyle = ratio > 0.6 ? 'always' : ratio < 0.2 ? 'never' : 'either';
-      lines.push(`- 语句结尾：${semicolonStyle === 'always' ? '带分号' : semicolonStyle === 'never' ? '通常省略分号' : '两种写法都有'}`);
+      lines.push(
+        L(
+          `- 语句结尾：${semicolonStyle === 'always' ? '带分号' : semicolonStyle === 'never' ? '通常省略分号' : '两种写法都有'}`,
+          `- Statement endings: ${semicolonStyle === 'always' ? 'with semicolons' : semicolonStyle === 'never' ? 'usually without semicolons' : 'mixed'}`,
+        ),
+      );
     }
 
     this.styleHints = { indent: indentText, quotes: quoteStyle, semicolons: semicolonStyle };

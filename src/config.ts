@@ -13,8 +13,9 @@ import type {
   ReplyLength,
   ThemeId,
 } from '../shared/protocol';
-import { DEFAULT_QUICK_ACTIONS } from '../shared/protocol';
+import { defaultQuickActions } from '../shared/protocol';
 import { providerLabel, readAiSettings } from './ai';
+import { resolveLanguage } from './i18n';
 import type { AssetStore } from './pet/assets';
 
 export async function buildPetConfig(
@@ -43,6 +44,7 @@ export async function buildPetConfig(
   };
 
   const greeting = (config.get<string>('pet.greeting', '') ?? '').trim().slice(0, 200);
+  const language = resolveLanguage();
 
   return {
     name: config.get<string>('pet.name', '小豆'),
@@ -51,13 +53,14 @@ export async function buildPetConfig(
     volume: config.get<number>('pet.volume', 0.6),
     tts: config.get<boolean>('pet.tts', false),
     ttsRate: config.get<number>('pet.ttsRate', 1),
+    language,
     assets: await assets.buildAssets(webview),
     aiProviderLabel: providerLabel(ai),
     aiModel: ai.model,
     contextLabel,
     interruption: config.get<InterruptionLevel>('pet.interruption', 'balanced'),
     theme,
-    quickActions: normalizeQuickActions(config.get<QuickAction[]>('ui.quickActions', [])),
+    quickActions: normalizeQuickActions(config.get<QuickAction[]>('ui.quickActions', []), language),
     persona,
     greeting: greeting || undefined,
     themeScope: {
@@ -94,9 +97,10 @@ function normalizeHex(input: string | undefined): string {
   return /^#[0-9a-f]{6}$/i.test(value) ? value : '#4ec9b0';
 }
 
-function normalizeQuickActions(input: QuickAction[] | undefined): QuickAction[] {
+function normalizeQuickActions(input: QuickAction[] | undefined, language: 'zh' | 'en'): QuickAction[] {
+  const fallback = defaultQuickActions(language);
   if (!Array.isArray(input)) {
-    return [...DEFAULT_QUICK_ACTIONS];
+    return fallback;
   }
   const actions = input
     .filter((item) => item && typeof item.label === 'string' && item.label.trim())
@@ -108,5 +112,5 @@ function normalizeQuickActions(input: QuickAction[] | undefined): QuickAction[] 
     }))
     .filter((item) => item.command || item.text);
 
-  return actions.length ? actions : [...DEFAULT_QUICK_ACTIONS];
+  return actions.length ? actions : fallback;
 }

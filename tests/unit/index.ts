@@ -8,3 +8,4 @@ import './themeFile.test';
 import './history.test';
 import './verify.test';
 import './capability.test';
+import './i18n.test';

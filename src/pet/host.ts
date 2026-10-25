@@ -21,6 +21,7 @@ import { collectEditorSnippet, formatSnippet, workspaceSummary } from '../ai/con
 import { buildSystemPrompt, docsNoSourcePrompt, docsPrompt } from '../ai/prompts';
 import type { ChatTurn } from '../ai/types';
 import { buildPetConfig } from '../config';
+import { L, isEnglish } from '../i18n';
 import type { ProjectContext } from '../context/project';
 import { gatherSources } from '../docs/search';
 import { PACKS, readStandardsConfig, standardsBlock } from '../standards/rules';
@@ -33,13 +34,22 @@ const MAX_HISTORY = 80;
 const MAX_TURNS = 8;
 const TURN_CHARS = 2500;
 
-const CLICK_LINES = [
+const CLICK_LINES_ZH = [
   '在的！要我帮你看点什么？',
   '点点点，痒——',
   '这一行写累了就歇会儿，我盯着呢。',
   '报错别慌，把光标放到那儿，我来看看。',
   '刚保存的文件我看到了，挺整齐。',
   '要不要我陪你查查文档？',
+];
+
+const CLICK_LINES_EN = [
+  'Yes? Want me to look at something?',
+  'Poke poke — that tickles.',
+  "If this line is fighting you, take a break. I'm watching.",
+  "Errors happen. Put the cursor on it and I'll take a look.",
+  'I saw the file you just saved. Nice and tidy.',
+  'Want me to look something up in the docs?',
 ];
 
 const CODE_HINT = /(代码|函数|报错|错误|异常|这个|这段|这里|上面|文件|变量|类|接口|实现|测试|优化|重构|解释|修复|写个|写一|怎么|为什么|bug|error|code|function|api|type|import|traceback|exception)/i;
@@ -220,6 +230,8 @@ export class PetHost implements vscode.Disposable {
         id: pack.id,
         label: pack.label,
         description: pack.description,
+        labelEn: pack.labelEn,
+        descriptionEn: pack.descriptionEn,
         enabled: config.packs.includes(pack.id),
       })),
       conventions: this.project.getConventions(),
@@ -273,6 +285,30 @@ export class PetHost implements vscode.Disposable {
     await this.runDocs(id, query);
   }
 
+  /** 人设 + 环境 + 团队规范，侧边栏与行内对话共用。 */
+  private systemPrompt(providerLabel: string): string {
+    const snapshot = this.state.snapshot();
+    const config = vscode.workspace.getConfiguration('deskpet');
+    const environment = workspaceSummary();
+    return [
+      buildSystemPrompt({
+        name: config.get<string>('pet.name', '小豆'),
+        extra: config.get<string>('ai.extraInstructions', ''),
+        level: snapshot.level,
+        days: snapshot.daysTogether,
+        userName: config.get<string>('pet.userName', ''),
+        tone: config.get<PetTone>('pet.tone', 'warm'),
+        replyLength: config.get<ReplyLength>('ai.replyLength', 'normal'),
+        language: isEnglish() ? 'en' : 'zh',
+      }),
+      L(
+        `当前环境：${environment}；AI：${providerLabel}。`,
+        `Environment: ${environment}; AI: ${providerLabel}.`,
+      ),
+      standardsBlock(this.project.getConventions(), this.project.getStyleProfile()),
+    ].join('\n\n');
+  }
+
   /**
    * 行内对话用的一次性问答：不写入侧边栏历史，但仍带项目上下文与团队规范。
    */
@@ -283,23 +319,8 @@ export class PetHost implements vscode.Disposable {
   ): Promise<string> {
     const settings = await readAiSettings(this.context);
     const provider = createProvider(settings);
-    const snapshot = this.state.snapshot();
 
-    const system = [
-      buildSystemPrompt({
-        name: vscode.workspace.getConfiguration('deskpet').get<string>('pet.name', '小豆'),
-        extra: vscode.workspace.getConfiguration('deskpet').get<string>('ai.extraInstructions', ''),
-        level: snapshot.level,
-        days: snapshot.daysTogether,
-        userName: vscode.workspace.getConfiguration('deskpet').get<string>('pet.userName', ''),
-        tone: vscode.workspace.getConfiguration('deskpet').get<PetTone>('pet.tone', 'warm'),
-        replyLength: vscode.workspace
-          .getConfiguration('deskpet')
-          .get<ReplyLength>('ai.replyLength', 'normal'),
-      }),
-      `当前环境：${workspaceSummary()}；AI：${provider.label}。`,
-      standardsBlock(this.project.getConventions(), this.project.getStyleProfile()),
-    ].join('\n\n');
+    const system = this.systemPrompt(provider.label);
 
     let bundle = '';
     try {
@@ -335,7 +356,9 @@ export class PetHost implements vscode.Disposable {
 
   async runTurn(options: TurnOptions): Promise<string> {
     if (this.busy) {
-      this.say('等等，我还在想上一个问题…', { action: 'think' });
+      this.say(L('等等，我还在想上一个问题…', 'Hold on, I am still thinking about the last question…'), {
+        action: 'think',
+      });
       return '';
     }
 
@@ -353,7 +376,7 @@ export class PetHost implements vscode.Disposable {
     }
 
     this.busy = true;
-    this.busyLabel = '思考中…';
+    this.busyLabel = L('思考中…', 'Thinking…');
     this.broadcast({ type: 'busy', busy: true, label: this.busyLabel });
     this.broadcast({ type: 'chatStart', id });
     this.react('think');
@@ -365,22 +388,8 @@ export class PetHost implements vscode.Disposable {
     try {
       const settings = await readAiSettings(this.context);
       const provider = createProvider(settings);
-      const snapshot = this.state.snapshot();
-      const system = [
-        buildSystemPrompt({
-          name: vscode.workspace.getConfiguration('deskpet').get<string>('pet.name', '小豆'),
-          extra: vscode.workspace.getConfiguration('deskpet').get<string>('ai.extraInstructions', ''),
-          level: snapshot.level,
-          days: snapshot.daysTogether,
-          userName: vscode.workspace.getConfiguration('deskpet').get<string>('pet.userName', ''),
-          tone: vscode.workspace.getConfiguration('deskpet').get<PetTone>('pet.tone', 'warm'),
-          replyLength: vscode.workspace
-            .getConfiguration('deskpet')
-            .get<ReplyLength>('ai.replyLength', 'normal'),
-        }),
-        `当前环境：${workspaceSummary()}；AI：${provider.label}。`,
-        standardsBlock(this.project.getConventions(), this.project.getStyleProfile()),
-      ].join('\n\n');
+
+      const system = this.systemPrompt(provider.label);
 
       const turns: ChatTurn[] = [{ role: 'system', content: system }];
       for (const message of priorHistory.slice(-MAX_TURNS)) {
@@ -408,14 +417,14 @@ export class PetHost implements vscode.Disposable {
 
       if (cts.token.isCancellationRequested) {
         if (!acc.trim()) {
-          this.broadcast({ type: 'chatError', id, message: '已取消。' });
+          this.broadcast({ type: 'chatError', id, message: L('已取消。', 'Cancelled.') });
           return '';
         }
         // 已经生成的内容保留下来，不要因为点了停止就丢掉
         const partial: ChatMessage = {
           id,
           role: 'assistant',
-          content: `${acc}\n\n> 已停止生成`,
+          content: `${acc}\n\n> ${L('已停止生成', 'Generation stopped')}`,
           at: Date.now(),
         };
         this.history.push(partial);
@@ -424,7 +433,12 @@ export class PetHost implements vscode.Disposable {
         return acc;
       }
       if (!acc.trim()) {
-        throw new Error('模型没有返回内容。请检查模型是否加载成功，或换一个模型试试。');
+        throw new Error(
+          L(
+            '模型没有返回内容。请检查模型是否加载成功，或换一个模型试试。',
+            'The model returned nothing. Check that it loaded correctly, or try another model.',
+          ),
+        );
       }
 
       const message: ChatMessage = {
@@ -452,7 +466,13 @@ export class PetHost implements vscode.Disposable {
       this.broadcast({ type: 'snapshot', snapshot: after });
       this.react(options.action ?? 'happy');
       if (after.level > before.level) {
-        this.say(`好感度升级到 Lv.${after.level} 啦，我会更努力帮你的！`, { action: 'shy' });
+        this.say(
+          L(
+            `好感度升级到 Lv.${after.level} 啦，我会更努力帮你的！`,
+            `Affection reached Lv.${after.level} — I'll work even harder for you!`,
+          ),
+          { action: 'shy' },
+        );
       }
 
       return acc;
@@ -480,7 +500,7 @@ export class PetHost implements vscode.Disposable {
     }
 
     if (!this.project.ready) {
-      this.busyLabel = '建立项目索引…';
+      this.busyLabel = L('建立项目索引…', 'Building project index…');
       this.broadcast({ type: 'busy', busy: true, label: this.busyLabel });
     }
 
@@ -500,7 +520,7 @@ export class PetHost implements vscode.Disposable {
       return '';
     } finally {
       if (this.busy) {
-        this.busyLabel = '思考中…';
+        this.busyLabel = L('思考中…', 'Thinking…');
         this.broadcast({ type: 'busy', busy: true, label: this.busyLabel });
       }
     }
@@ -532,13 +552,17 @@ export class PetHost implements vscode.Disposable {
       case 'switchPet':
         await this.assets.switchAsset(message.id);
         await this.refreshAll();
-        this.say('换好新形象啦，看看合不合身？', { action: 'shy' });
+        this.say(L('换好新形象啦，看看合不合身？', 'New look equipped — how does it fit?'), {
+          action: 'shy',
+        });
         break;
       case 'switchSound': {
         if (message.id === '__none__') {
           await this.assets.unbindSound(message.slot);
           await this.refreshAll();
-          this.say('这个场景改用内置音效啦。', { action: 'happy' });
+          this.say(L('这个场景改用内置音效啦。', 'This slot now uses the built-in sound.'), {
+            action: 'happy',
+          });
           break;
         }
         const sounds = await this.assets.listSounds(webview);
@@ -546,18 +570,28 @@ export class PetHost implements vscode.Disposable {
         if (item) {
           const filePath = await this.assets.resolveSoundPath(item.id);
           if (!filePath) {
-            this.notice('音效文件找不到了，可能已被移动或删除。', 'warn');
+            this.notice(
+              L(
+                '音效文件找不到了，可能已被移动或删除。',
+                'That sound file is missing — it may have been moved or deleted.',
+              ),
+              'warn',
+            );
             break;
           }
           await this.assets.bindSound(message.slot, filePath);
           await this.refreshAll();
-          this.say('音效换好了，点我试试？', { action: 'happy' });
+          this.say(L('音效换好了，点我试试？', 'Sound updated — click me to try it?'), {
+            action: 'happy',
+          });
         }
         break;
       }
       case 'clearHistory':
         await this.clearHistory();
-        this.say('对话记录清空啦，从头开始。', { action: 'idle' });
+        this.say(L('对话记录清空啦，从头开始。', 'Chat history cleared. Fresh start.'), {
+          action: 'idle',
+        });
         break;
       case 'reloadAssets':
         await this.refreshAll();
@@ -573,7 +607,9 @@ export class PetHost implements vscode.Disposable {
       return;
     }
     if (this.busy) {
-      this.say('我还在想上一个问题，稍等我一下～', { action: 'think' });
+      this.say(L('我还在想上一个问题，稍等我一下～', 'Still working on the last one — one moment.'), {
+        action: 'think',
+      });
       return;
     }
 
@@ -595,7 +631,7 @@ export class PetHost implements vscode.Disposable {
     const cts = new vscode.CancellationTokenSource();
     this.current = { id, cts };
     this.busy = true;
-    this.broadcast({ type: 'busy', busy: true, label: '查资料中…' });
+    this.broadcast({ type: 'busy', busy: true, label: L('查资料中…', 'Searching docs…') });
     this.broadcast({ type: 'chatStart', id });
     this.broadcast({
       type: 'chatUser',
@@ -606,11 +642,18 @@ export class PetHost implements vscode.Disposable {
     try {
       const { sources, searched } = await gatherSources(this.context, query, cts.token);
       if (cts.token.isCancellationRequested) {
-        this.broadcast({ type: 'chatError', id, message: '已取消。' });
+        this.broadcast({ type: 'chatError', id, message: L('已取消。', 'Cancelled.') });
         return;
       }
       if (searched && !sources.length) {
-        this.broadcast({ type: 'notice', text: '没有搜到可用资料，先凭已有知识回答（可能不是最新版本）。', kind: 'warn' });
+        this.broadcast({
+          type: 'notice',
+          text: L(
+            '没有搜到可用资料，先凭已有知识回答（可能不是最新版本）。',
+            'No sources found — answering from existing knowledge (may not be up to date).',
+          ),
+          kind: 'warn',
+        });
       }
       const languageId = vscode.window.activeTextEditor?.document.languageId ?? 'text';
       const request = sources.length
@@ -620,8 +663,10 @@ export class PetHost implements vscode.Disposable {
       this.busy = false;
       const answer = await this.runTurn({ id, request, speak: false, useProjectContext: false });
       if (answer && sources.length) {
-        const links = sources.map((source, index) => `[资料 ${index + 1}](${source.url})`).join(' · ');
-        this.broadcast({ type: 'notice', text: `参考：${links}` });
+        const links = sources
+          .map((source, index) => `[${L('资料', 'Source')} ${index + 1}](${source.url})`)
+          .join(' · ');
+        this.broadcast({ type: 'notice', text: L(`参考：${links}`, `Sources: ${links}`) });
       }
     } catch (error) {
       this.broadcast({
@@ -643,7 +688,8 @@ export class PetHost implements vscode.Disposable {
     this.clickCount += 1;
     this.broadcast({ type: 'snapshot', snapshot: this.state.snapshot() });
     if (this.clickCount % 5 === 0) {
-      const line = CLICK_LINES[Math.floor(Math.random() * CLICK_LINES.length)];
+      const lines = isEnglish() ? CLICK_LINES_EN : CLICK_LINES_ZH;
+      const line = lines[Math.floor(Math.random() * lines.length)];
       this.say(line, { action: 'shy', ttl: 5000 });
     }
   }

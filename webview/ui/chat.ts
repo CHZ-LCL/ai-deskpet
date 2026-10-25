@@ -1,5 +1,6 @@
 import type { AdviceAction, AdviceCard, ChatMessage } from '../../shared/protocol';
 import { escapeHtml } from '../util';
+import { L } from '../i18n';
 import { renderMarkdown } from './markdown';
 
 interface Stream {
@@ -13,14 +14,19 @@ interface Stream {
 export class ChatView {
   private readonly ids = new Set<string>();
   private readonly streams = new Map<string, Stream>();
-  private pending?: HTMLElement;
+  private empty?: HTMLElement;
 
-  constructor(private readonly log: HTMLElement) {}
+  constructor(
+    private readonly log: HTMLElement,
+    private readonly emptyText: () => string,
+  ) {}
 
   clear(): void {
     this.log.innerHTML = '';
     this.ids.clear();
     this.streams.clear();
+    this.empty = undefined;
+    this.syncEmpty();
   }
 
   addUser(message: ChatMessage): void {
@@ -32,14 +38,6 @@ export class ChatView {
       this.append(message.role === 'assistant' ? 'pet' : 'user', message.content, message.id, message.error);
     }
     this.scrollToBottom(true);
-  }
-
-  addAssistant(message: ChatMessage): void {    if (this.ids.has(message.id)) {
-      this.finish(message.id, message.content);
-      return;
-    }
-    this.append('pet', message.content, message.id, message.error);
-    this.scrollToBottom();
   }
 
   begin(id: string): void {
@@ -58,6 +56,7 @@ export class ChatView {
     element.appendChild(content);
     this.log.appendChild(element);
     this.streams.set(id, { element, content, text: '' });
+    this.syncEmpty();
     this.scrollToBottom();
   }
 
@@ -92,6 +91,7 @@ export class ChatView {
     stream.element.classList.remove('streaming');
     this.streams.delete(id);
     this.ids.add(id);
+    this.syncEmpty();
     this.scrollToBottom();
   }
 
@@ -106,6 +106,7 @@ export class ChatView {
     } else {
       this.append('pet', message, `err-${id}`, true);
     }
+    this.syncEmpty();
     this.scrollToBottom();
   }
 
@@ -137,6 +138,7 @@ export class ChatView {
     }
 
     this.log.appendChild(element);
+    this.syncEmpty();
     this.scrollToBottom();
   }
 
@@ -160,18 +162,19 @@ export class ChatView {
         <span class="advice-title">${escapeHtml(advice.title)}</span>
         <span class="advice-loc">${escapeHtml(advice.file)}:${advice.startLine}-${advice.endLine}</span>
       </div>
-      ${row('问题', advice.problem)}
-      ${row('原因', advice.cause)}
-      ${row('方案', advice.plan)}
-      ${row('影响', advice.impact)}
+      ${row(L('问题'), advice.problem)}
+      ${row(L('原因'), advice.cause)}
+      ${row(L('方案'), advice.plan)}
+      ${row(L('影响'), advice.impact)}
       <div class="advice-actions">
-        <button data-advice-action="diff">先看差异</button>
-        <button data-advice-action="apply" class="primary">应用修改</button>
-        <button data-advice-action="copy" class="ghost">复制代码</button>
-        <button data-advice-action="dismiss" class="ghost">忽略</button>
+        <button data-advice-action="diff">${L('先看差异')}</button>
+        <button data-advice-action="apply" class="primary">${L('应用修改')}</button>
+        <button data-advice-action="copy" class="ghost">${L('复制代码')}</button>
+        <button data-advice-action="dismiss" class="ghost">${L('忽略')}</button>
       </div>`;
 
     this.log.appendChild(element);
+    this.syncEmpty();
     this.scrollToBottom();
   }
 
@@ -186,14 +189,14 @@ export class ChatView {
     card.classList.add(ok ? 'is-done' : 'is-failed');
 
     const messages: Record<AdviceAction, string> = {
-      apply: '已应用到编辑器',
-      diff: '已打开差异预览',
-      copy: '代码已复制到剪贴板',
-      dismiss: '已忽略这条建议',
+      apply: L('已应用到编辑器'),
+      diff: L('已打开差异预览'),
+      copy: L('代码已复制到剪贴板'),
+      dismiss: L('已忽略这条建议'),
     };
     const footer = document.createElement('div');
     footer.className = 'advice-foot';
-    footer.textContent = ok ? messages[action] : '操作失败，请重新生成建议';
+    footer.textContent = ok ? messages[action] : L('操作失败，请重新生成建议');
     card.appendChild(footer);
   }
 
@@ -203,20 +206,17 @@ export class ChatView {
     element.className = 'chat-notice md';
     element.innerHTML = renderMarkdown(text);
     this.log.appendChild(element);
+    this.syncEmpty();
     this.scrollToBottom();
   }
 
-  setPending(label?: string): void {    this.pending?.remove();
-    this.pending = undefined;
-    if (!label) {
-      return;
+  /** 切换语言后刷新空状态提示。 */
+  refreshEmpty(): void {
+    if (this.empty) {
+      this.empty.textContent = this.emptyText();
+    } else {
+      this.syncEmpty();
     }
-    const element = document.createElement('div');
-    element.className = 'msg role-pet pending';
-    element.innerHTML = `<span class="typing"><i></i><i></i><i></i></span><span class="pending-label">${escapeHtml(label)}</span>`;
-    this.log.appendChild(element);
-    this.pending = element;
-    this.scrollToBottom();
   }
 
   scrollToBottom(force = false): void {
@@ -244,6 +244,22 @@ export class ChatView {
     if (id) {
       this.ids.add(id);
     }
+    this.syncEmpty();
     this.scrollToBottom();
+  }
+
+  private syncEmpty(): void {
+    const hasContent = this.log.querySelector('.msg, .chat-nudge, .advice-card, .chat-notice');
+    if (hasContent) {
+      this.empty?.remove();
+      this.empty = undefined;
+      return;
+    }
+    if (!this.empty) {
+      this.empty = document.createElement('div');
+      this.empty.className = 'chat-empty';
+      this.log.appendChild(this.empty);
+    }
+    this.empty.textContent = this.emptyText();
   }
 }

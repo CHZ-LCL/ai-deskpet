@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
+import { L } from '../i18n';
 
 const FUNCTION_KINDS = new Set([
   vscode.SymbolKind.Function,
@@ -7,12 +8,17 @@ const FUNCTION_KINDS = new Set([
   vscode.SymbolKind.Constructor,
 ]);
 
-const EXPLAIN_PROMPT =
-  '讲解这段代码：它在做什么、关键分支和边界条件、可能的坑。回答控制在 12 行以内，必要时用代码块。';
+const explainPrompt = (): string =>
+  L(
+    '讲解这段代码：它在做什么、关键分支和边界条件、可能的坑。回答控制在 12 行以内，必要时用代码块。',
+    'Explain this code: what it does, key branches and edge cases, and likely pitfalls. Keep the answer under 12 lines and use fenced code when needed.',
+  );
 
-const REFACTOR_PROMPT =
-  '重构这段代码：改用更现代、更简洁、性能更好的写法，保持行为不变并遵守团队规范。' +
-  '先给【问题】【原因】【方案】【影响】，再给完整替换代码。';
+const refactorPrompt = (): string =>
+  L(
+    '重构这段代码：改用更现代、更简洁、性能更好的写法，保持行为不变并遵守团队规范。先给【问题】【原因】【方案】【影响】，再给完整替换代码。',
+    'Refactor this code: more modern, simpler, and faster while keeping behavior unchanged and following team standards. Start with 【问题】【原因】【方案】【影响】, then give the complete replacement.',
+  );
 
 /**
  * 函数级 CodeLens：把“讲解 / 重构”放到代码上方，不用选中、不用开侧边栏。
@@ -71,16 +77,16 @@ export function registerInlineCodeLens(context: vscode.ExtensionContext): void {
 
           lenses.push(
             new vscode.CodeLens(anchor, {
-              title: '$(comment-discussion) 讲解',
-              tooltip: `让桌宠讲解 ${symbol.name}`,
+              title: L('$(comment-discussion) 讲解', '$(comment-discussion) Explain'),
+              tooltip: L(`让桌宠讲解 ${symbol.name}`, `Ask DeskPet to explain ${symbol.name}`),
               command: CMD.inlineChat,
-              arguments: [{ ...args, prompt: EXPLAIN_PROMPT }],
+              arguments: [{ ...args, prompt: explainPrompt() }],
             }),
             new vscode.CodeLens(anchor, {
-              title: '$(tools) 重构',
-              tooltip: `重构 ${symbol.name}`,
+              title: L('$(tools) 重构', '$(tools) Refactor'),
+              tooltip: L(`重构 ${symbol.name}`, `Refactor ${symbol.name}`),
               command: CMD.inlineChat,
-              arguments: [{ ...args, prompt: REFACTOR_PROMPT }],
+              arguments: [{ ...args, prompt: refactorPrompt() }],
             }),
           );
 

@@ -389,8 +389,7 @@ button {
   background-clip: padding-box;
 }
 
-.chat-log:empty::before {
-  content: "选中一段代码让我讲解，或者直接问我点什么。\A Ctrl+Alt+E 讲解 · Ctrl+Alt+P 聊天";
+.chat-empty {
   white-space: pre-line;
   margin: auto;
   padding: 10px;

@@ -1,4 +1,5 @@
 import type { PetAssets, SoundSlot } from '../shared/protocol';
+import { L, getLanguage } from './i18n';
 
 const SYNTH_PATTERNS: Record<SoundSlot, { freqs: number[]; type: OscillatorType; duration: number }> = {
   click: { freqs: [880, 1180], type: 'sine', duration: 0.09 },
@@ -57,8 +58,9 @@ export class AudioKit {
     const utterance = new SpeechSynthesisUtterance(cleaned);
     utterance.rate = clamp(rate, 0.5, 2);
     utterance.pitch = 1.08;
-    utterance.lang = 'zh-CN';
-    const voice = pickChineseVoice();
+    const english = getLanguage() === 'en';
+    utterance.lang = english ? 'en-US' : 'zh-CN';
+    const voice = pickVoice(english);
     if (voice) {
       utterance.voice = voice;
     }
@@ -110,21 +112,23 @@ export class AudioKit {
   }
 }
 
-function pickChineseVoice(): SpeechSynthesisVoice | undefined {
+function pickVoice(english: boolean): SpeechSynthesisVoice | undefined {
   const voices = window.speechSynthesis.getVoices();
+  const prefix = english ? 'en' : 'zh';
+  const preferred = english ? /aria|jenny|samantha|natural|female/i : /xiaoxiao|ting|yaoyao|female/i;
   return (
-    voices.find((voice) => voice.lang?.toLowerCase().startsWith('zh') && /xiaoxiao|ting|yaoyao|female/i.test(voice.name)) ??
-    voices.find((voice) => voice.lang?.toLowerCase().startsWith('zh'))
+    voices.find((voice) => voice.lang?.toLowerCase().startsWith(prefix) && preferred.test(voice.name)) ??
+    voices.find((voice) => voice.lang?.toLowerCase().startsWith(prefix))
   );
 }
 
 function cleanForSpeech(text: string): string {
   return text
-    .replace(/```[\s\S]*?```/g, '，代码块，')
+    .replace(/```[\s\S]*?```/g, L('，代码块，', ', code block, '))
     .replace(/`[^`]*`/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/https?:\/\/\S+/g, '链接')
+    .replace(/https?:\/\/\S+/g, L('链接', 'link'))
     .replace(/[#>*_~|-]{1,}/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim()

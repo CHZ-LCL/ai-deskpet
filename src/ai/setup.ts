@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import type { PetHost } from '../pet/host';
 import { API_KEY_SECRET } from './index';
@@ -34,7 +35,7 @@ export async function quickSetup(
   const provider = config.get<string>('ai.provider', 'ollama');
 
   if (provider === 'vscode-lm') {
-    host.say('当前用的是 VS Code 语言模型，已经不需要额外配置了。', { action: 'happy' });
+    host.say(L('当前用的是 VS Code 语言模型，已经不需要额外配置了。', `You are using the VS Code Language Model API — no extra configuration is needed.`), { action: 'happy' });
     return;
   }
 
@@ -71,7 +72,7 @@ export async function quickSetup(
   }
 
   if (!models.length) {
-    host.say('接口能连上，但没有返回可用模型。先 ollama pull 一个 coder 模型吧。', {
+    host.say(L('接口能连上，但没有返回可用模型。先 ollama pull 一个 coder 模型吧。', `The endpoint is reachable but returned no models. Try "ollama pull" for a coder model first.`), {
       action: 'think',
     });
     return;
@@ -95,7 +96,7 @@ export async function quickSetup(
   }
 
   await config.update('ai.model', picked.label, vscode.ConfigurationTarget.Global);
-  host.say(`连上了，以后就用 ${picked.label}。`, { action: 'happy' });
+  host.say(L(`连上了，以后就用 ${picked.label}。`, `Connected — I'll use ${picked.label} from now on.`), { action: 'happy' });
 }
 
 /**
@@ -148,7 +149,7 @@ export function registerAutoSetup(context: vscode.ExtensionContext, host: PetHos
 
     if (choice === '使用推荐模型') {
       await config.update('ai.model', best, vscode.ConfigurationTarget.Global);
-      host.say(`已经切到 ${best}，直接问我就行。`, { action: 'happy' });
+      host.say(L(`已经切到 ${best}，直接问我就行。`, `Switched to ${best}. Just ask me anything.`), { action: 'happy' });
     } else if (choice === '选择其它模型') {
       await quickSetup(context, host);
     }

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { L } from '../i18n';
 import type { StyleProfile } from './rules';
 
 const DEFAULT_PROFILE: StyleProfile = {
@@ -60,7 +61,13 @@ export function inferStyleProfile(code: string, fallback?: Partial<StyleProfile>
 
   return {
     indent:
-      forcedIndent === '2' ? '2 空格' : forcedIndent === '4' ? '4 空格' : forcedIndent === 'tab' ? 'Tab' : (fallback?.indent ?? indent),
+      forcedIndent === '2'
+        ? L('2 空格', '2 spaces')
+        : forcedIndent === '4'
+          ? L('4 空格', '4 spaces')
+          : forcedIndent === 'tab'
+            ? 'Tab'
+            : (fallback?.indent ?? indent),
     quotes:
       forcedQuotes === 'single' || forcedQuotes === 'double' ? forcedQuotes : (fallback?.quotes ?? quotes),
     semicolons:
@@ -82,13 +89,23 @@ export function checkStyle(code: string, profile: StyleProfile): string[] {
     const single = (code.match(/'/g) ?? []).length;
     const double = (code.match(/"/g) ?? []).length;
     if (double > single * 2 && double > 4) {
-      notes.push('引号：生成代码以双引号为主，项目现有代码以单引号为主');
+      notes.push(
+        L(
+          '引号：生成代码以双引号为主，项目现有代码以单引号为主',
+          'Quotes: generated code mostly uses double quotes, but the project uses single quotes',
+        ),
+      );
     }
   } else if (profile.quotes === 'double') {
     const single = (code.match(/'/g) ?? []).length;
     const double = (code.match(/"/g) ?? []).length;
     if (single > double * 2 && single > 4) {
-      notes.push('引号：生成代码以单引号为主，项目现有代码以双引号为主');
+      notes.push(
+        L(
+          '引号：生成代码以单引号为主，项目现有代码以双引号为主',
+          'Quotes: generated code mostly uses single quotes, but the project uses double quotes',
+        ),
+      );
     }
   }
 
@@ -98,9 +115,19 @@ export function checkStyle(code: string, profile: StyleProfile): string[] {
     if (statements.length >= 6) {
       const ratio = withSemicolon / statements.length;
       if (profile.semicolons === 'always' && ratio < 0.5) {
-        notes.push('分号：项目习惯语句结尾加分号，生成代码多数没有');
+        notes.push(
+          L(
+            '分号：项目习惯语句结尾加分号，生成代码多数没有',
+            'Semicolons: the project uses them, but most generated statements omit them',
+          ),
+        );
       } else if (profile.semicolons === 'never' && ratio > 0.7) {
-        notes.push('分号：项目习惯省略分号，生成代码带了分号');
+        notes.push(
+          L(
+            '分号：项目习惯省略分号，生成代码带了分号',
+            'Semicolons: the project omits them, but the generated code includes them',
+          ),
+        );
       }
     }
   }
@@ -113,7 +140,12 @@ export function checkStyle(code: string, profile: StyleProfile): string[] {
     if (expected > 0 && indents.length >= 4) {
       const wrong = indents.filter((width) => width % expected !== 0).length;
       if (wrong / indents.length > 0.4) {
-        notes.push(`缩进：项目使用 ${profile.indent}，生成代码的缩进宽度不一致`);
+        notes.push(
+          L(
+            `缩进：项目使用 ${profile.indent}，生成代码的缩进宽度不一致`,
+            `Indentation: the project uses ${profile.indent}, but the generated code does not align`,
+          ),
+        );
       }
     }
   }
@@ -123,15 +155,29 @@ export function checkStyle(code: string, profile: StyleProfile): string[] {
 
 export function profileFromConventions(conventions: string[]): Partial<StyleProfile> {
   const result: Partial<StyleProfile> = { ...DEFAULT_PROFILE };
+  const twoSpaces = L('2 空格', '2 spaces');
+  const fourSpaces = L('4 空格', '4 spaces');
   for (const line of conventions) {
-    if (line.includes('缩进')) {
-      result.indent = line.includes('Tab') ? 'Tab' : line.includes('4') ? '4 空格' : '2 空格';
+    if (line.includes('缩进') || line.includes('Indentation')) {
+      result.indent = line.includes('Tab')
+        ? 'Tab'
+        : line.includes('4')
+          ? fourSpaces
+          : twoSpaces;
     }
-    if (line.includes('引号')) {
-      result.quotes = line.includes('单引号') ? 'single' : line.includes('双引号') ? 'double' : 'either';
+    if (line.includes('引号') || line.includes('Quotes')) {
+      result.quotes = line.includes('单引号') || line.includes('single')
+        ? 'single'
+        : line.includes('双引号') || line.includes('double')
+          ? 'double'
+          : 'either';
     }
-    if (line.includes('分号')) {
-      result.semicolons = line.includes('带分号') ? 'always' : line.includes('省略') ? 'never' : 'either';
+    if (line.includes('分号') || line.includes('Semicolons')) {
+      result.semicolons = line.includes('带分号') || line.includes('with semicolons')
+        ? 'always'
+        : line.includes('省略') || line.includes('without')
+          ? 'never'
+          : 'either';
     }
   }
   return result;

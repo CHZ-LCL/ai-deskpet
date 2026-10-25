@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import { refactorPrompt, rulesPrompt } from '../ai/prompts';
@@ -22,7 +23,7 @@ export function registerStandardsCommands(host: PetHost): vscode.Disposable[] {
 async function reviewRules(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要检查的文件。', { action: 'think' });
+    host.say(L('先打开要检查的文件。', `Open the file you want to check first.`), { action: 'think' });
     return;
   }
 
@@ -36,7 +37,7 @@ async function reviewRules(host: PetHost): Promise<void> {
 
   const code = document.getText(scanRange).slice(0, MAX_SCAN_CHARS);
   if (!code.trim()) {
-    host.say('这里没有可检查的代码。', { action: 'think' });
+    host.say(L('这里没有可检查的代码。', `There is no code to check here.`), { action: 'think' });
     return;
   }
 
@@ -46,7 +47,7 @@ async function reviewRules(host: PetHost): Promise<void> {
   });
 
   if (!findings.length) {
-    host.say('本地规则扫描没发现明显问题。要做更深的逻辑检查，可以用「体检当前文件」。', {
+    host.say(L('本地规则扫描没发现明显问题。要做更深的逻辑检查，可以用「体检当前文件」。', `The local rule scan found nothing obvious. Use “Review the current file” for a deeper logic check.`), {
       action: 'happy',
     });
     return;
@@ -54,7 +55,7 @@ async function reviewRules(host: PetHost): Promise<void> {
 
   const counts = countBySeverity(findings);
   host.notice(
-    `规范扫描：高 ${counts.high} · 中 ${counts.medium} · 低 ${counts.low}` +
+    L(`规范扫描：高 ${counts.high} · 中 ${counts.medium} · 低 ${counts.low}`, `Standards scan: high ${counts.high} · medium ${counts.medium} · low ${counts.low}`) +
       (hasSelection ? `（选中 ${scanRange.start.line + 1}-${scanRange.end.line + 1} 行）` : ''),
   );
 
@@ -85,13 +86,13 @@ async function reviewRules(host: PetHost): Promise<void> {
 async function modernize(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要重构的文件。', { action: 'think' });
+    host.say(L('先打开要重构的文件。', `Open the file to refactor first.`), { action: 'think' });
     return;
   }
   const document = editor.document;
   const selection = editor.selection;
   if (selection.isEmpty) {
-    host.say('先选中要现代化的代码段，我按规范包重写。', { action: 'think' });
+    host.say(L('先选中要现代化的代码段，我按规范包重写。', `Select the code to modernize and I’ll rewrite it using the rule packs.`), { action: 'think' });
     await focusPet();
     return;
   }

@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import { documentationPrompt } from '../ai/prompts';
@@ -24,7 +25,7 @@ export function registerDocCommands(host: PetHost): vscode.Disposable[] {
 async function generateDocs(host: PetHost, line?: number): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要补文档的文件。', { action: 'think' });
+    host.say(L('先打开要补文档的文件。', `Open the file to document first.`), { action: 'think' });
     return;
   }
 
@@ -32,7 +33,7 @@ async function generateDocs(host: PetHost, line?: number): Promise<void> {
   const targetLine = line ?? editor.selection.active.line;
   const symbol = await findEnclosingSymbol(document, targetLine);
   if (!symbol) {
-    host.say('把光标放在函数或类里，我才能补文档。', { action: 'think' });
+    host.say(L('把光标放在函数或类里，我才能补文档。', `Put the cursor inside a function or class so I can add docs.`), { action: 'think' });
     return;
   }
 
@@ -65,18 +66,18 @@ async function generateDocs(host: PetHost, line?: number): Promise<void> {
 async function checkDocs(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要检查的文件。', { action: 'think' });
+    host.say(L('先打开要检查的文件。', `Open the file you want to check first.`), { action: 'think' });
     return;
   }
 
   const document = editor.document;
   const drift = scanDocDrift(document.getText(), document.languageId);
   if (!drift.length) {
-    host.say('文档和签名是一致的，没发现需要补的地方。', { action: 'happy' });
+    host.say(L('文档和签名是一致的，没发现需要补的地方。', `Docs match the signatures — nothing to update.`), { action: 'happy' });
     return;
   }
 
-  host.notice(`发现 ${drift.length} 处文档与签名不一致`);
+  host.notice(L(`发现 ${drift.length} 处文档与签名不一致`, `Found ${drift.length} places where docs and signatures disagree`));
   const picked = await vscode.window.showQuickPick(
     drift.map((item) => ({
       label: `L${item.line}  ${item.name}`,

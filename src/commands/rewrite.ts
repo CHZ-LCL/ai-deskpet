@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import { capabilityMatches, checkFullFileCapability, readCapability } from '../ai/capability';
@@ -22,10 +23,10 @@ async function checkCapability(host: PetHost, context: vscode.ExtensionContext):
   const record = await checkFullFileCapability(context);
   const label = `${record.model}${record.passed ? '' : `：${record.notes}`}`;
   if (record.passed) {
-    host.say(`模型通过整文件改写验证（${label}），现在可以放心用全文修改了。`, { action: 'happy' });
+    host.say(L(`模型通过整文件改写验证（${label}），现在可以放心用全文修改了。`, `The model passed the full-file check (${label}); full-file rewrites are safe to use now.`), { action: 'happy' });
     void vscode.window.showInformationMessage(`整文件改写能力验证通过：${label}`);
   } else {
-    host.say('这个模型的整文件改写还不稳定，先用逐条修复更安全。', { action: 'think' });
+    host.say(L('这个模型的整文件改写还不稳定，先用逐条修复更安全。', `This model is not stable at full-file rewrites yet. Targeted fixes are safer for now.`), { action: 'think' });
     void vscode.window.showWarningMessage(`整文件改写验证未通过：${label}`);
   }
 }
@@ -37,7 +38,7 @@ async function checkCapability(host: PetHost, context: vscode.ExtensionContext):
 async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要修改的文件。', { action: 'think' });
+    host.say(L('先打开要修改的文件。', `Open the file to rewrite first.`), { action: 'think' });
     return;
   }
   const document = editor.document;
@@ -68,7 +69,7 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
     }
     const result = await checkFullFileCapability(context);
     if (!result.passed) {
-      host.notice(`整文件改写验证未通过：${result.notes}`, 'warn');
+      host.notice(L(`整文件改写验证未通过：${result.notes}`, `Full-file check failed: ${result.notes}`), 'warn');
       return;
     }
   }
@@ -79,7 +80,7 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
 
   if (document.lineCount > maxLines || before.length > maxChars) {
     host.say(
-      `文件超出全文修改上限（${document.lineCount} 行 / ${before.length} 字符，上限 ${maxLines} 行 / ${maxChars} 字符）。`,
+      L(`文件超出全文修改上限（${document.lineCount} 行 / ${before.length} 字符，上限 ${maxLines} 行 / ${maxChars} 字符）。`, `The file exceeds the rewrite limit (${document.lineCount} lines / ${before.length} chars; limit ${maxLines} lines / ${maxChars} chars).`),
       { action: 'think' },
     );
     return;
@@ -114,11 +115,11 @@ async function rewriteFile(host: PetHost, context: vscode.ExtensionContext): Pro
 
   const code = parseAdvice(reply).code;
   if (!code.trim()) {
-    host.notice('模型没有给出代码。', 'warn');
+    host.notice(L('模型没有给出代码。', `The model did not return any code.`), 'warn');
     return;
   }
   if (!isFullFileRewrite(before, code)) {
-    host.notice('模型返回的不是完整文件（可能被截断或丢了声明），这次不应用。可以重试或换更大的模型。', 'warn');
+    host.notice(L('模型返回的不是完整文件（可能被截断或丢了声明），这次不应用。可以重试或换更大的模型。', `The model did not return the complete file (truncated or missing declarations), so nothing was applied. Retry or use a larger model.`), 'warn');
     return;
   }
 

@@ -19,8 +19,9 @@ import type {
   ThemeId,
   WebviewMessage,
 } from '../shared/protocol';
-import { CMD, DEFAULT_QUICK_ACTIONS, THEME_PRESETS } from '../shared/protocol';
+import { CMD, THEME_PRESETS, defaultQuickActions } from '../shared/protocol';
 import { AudioKit } from './audio';
+import { L, getLanguage, setLanguage } from './i18n';
 import { PetEngine } from './pet/engine';
 import { ChatView } from './ui/chat';
 import { debounce } from './util';
@@ -43,6 +44,11 @@ const MOOD_LABEL: Record<PetAction, string> = {
   shy: '害羞',
   wave: '打招呼',
 };
+
+const moodLabel = (mood: PetAction): string => L(MOOD_LABEL[mood] ?? MOOD_LABEL.idle);
+
+/** 同一个中文在不同语境下英文不同（如「标准」「关闭」），这类词用显式取值。 */
+const pick = (zh: string, en: string): string => (getLanguage() === 'en' ? en : zh);
 
 const SOUND_SLOTS: Array<{ slot: SoundSlot; label: string }> = [
   { slot: 'click', label: '点击桌宠' },
@@ -87,10 +93,19 @@ const dom = {
   drawerFoot: el('drawer-foot'),
   toast: el('toast'),
   btnAi: el('btn-ai'),
+  btnGallery: el<HTMLButtonElement>('btn-gallery'),
+  btnSound: el<HTMLButtonElement>('btn-sound'),
+  btnStandards: el<HTMLButtonElement>('btn-standards'),
+  btnPalette: el<HTMLButtonElement>('btn-palette'),
+  btnSettings: el<HTMLButtonElement>('btn-settings'),
+  btnOpenPanel: el<HTMLButtonElement>('btn-open-panel'),
+  drawerClose: el<HTMLButtonElement>('drawer-close'),
 };
 
 const audio = new AudioKit();
-const chat = new ChatView(dom.chatLog);
+const chat = new ChatView(dom.chatLog, () =>
+  L('选中一段代码让我讲解，或者直接问我点什么。\nCtrl+Alt+E 讲解 · Ctrl+Alt+P 聊天'),
+);
 const engine = new PetEngine(dom.petMount, (text, kind) => toast(text, kind));
 
 const state: {
@@ -150,7 +165,7 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
     case 'chatStart':
       state.requestId = message.id;
       chat.begin(message.id);
-      setBusy(true, state.busyLabel ?? '思考中…');
+      setBusy(true, state.busyLabel ?? L('思考中…'));
       break;
     case 'chatDelta':
       chat.delta(message.id, message.text);
@@ -259,9 +274,9 @@ function onInit(message: Extract<HostMessage, { type: 'init' }>): void {
     if (!vscode.getState()?.greeted) {
       vscode.setState({ ...(vscode.getState() ?? {}), greeted: true });
       window.setTimeout(() => {
-        showSay(message.config.greeting || '我在这儿，需要我陪你看段代码吗？', 7000, [
-          { label: '讲解选中代码', command: CMD.explain },
-          { label: '查资料', send: '__docs__' },
+        showSay(message.config.greeting || L('我在这儿，需要我陪你看段代码吗？'), 7000, [
+          { label: L('讲解选中代码'), command: CMD.explain },
+          { label: L('查资料'), send: '__docs__' },
         ]);
       }, 600);
     }
@@ -272,16 +287,25 @@ function onInit(message: Extract<HostMessage, { type: 'init' }>): void {
 // ------------------------------------------------------------------ 配置
 
 function applyConfig(config: PetConfig): void {
+  const languageChanged = config.language !== state.config?.language;
+  setLanguage(config.language);
   state.config = config;
   dom.petName.textContent = config.name;
-  dom.namePlate.textContent = `${config.name} · ${MOOD_LABEL[state.snapshot?.mood ?? 'idle']}`;
   dom.modelChip.textContent = config.aiProviderLabel;
-  dom.modelChip.title = `模型：${config.aiModel}`;
+  dom.modelChip.title = L('模型：{0}', config.aiModel);
   dom.indexChip.textContent = config.contextLabel ?? '';
   dom.indexChip.hidden = !config.contextLabel;
-  dom.indexChip.title = config.contextLabel ? `已索引项目：${config.contextLabel}` : '项目索引未建立';
+  dom.indexChip.title = config.contextLabel
+    ? L('已索引项目：{0}', config.contextLabel)
+    : L('项目索引未建立');
   audio.configure(config.volume, config.assets);
   applyAppearance(config);
+
+  if (languageChanged) {
+    applyStaticLanguage();
+  } else if (state.snapshot) {
+    applySnapshot(state.snapshot);
+  }
 
   const rendererKey = [
     config.renderer,
@@ -301,6 +325,35 @@ function applyConfig(config: PetConfig): void {
 }
 
 let customStyle: HTMLStyleElement | undefined;
+
+/** 语言变化时统一刷新静态文案（动态内容各自渲染时已经取过词条）。 */
+function applyStaticLanguage(): void {
+  document.title = L('AI 桌宠');
+  dom.btnGallery.title = L('形象库');
+  dom.btnSound.title = L('音效库');
+  dom.btnStandards.title = L('代码规范');
+  dom.btnPalette.title = L('个性化');
+  dom.btnSettings.title = L('设置');
+  dom.btnOpenPanel.title = L('在编辑器标签中打开');
+  dom.drawerClose.title = L('关闭');
+  dom.levelChip.title = L('好感等级');
+  dom.unreadDot.title = L('有新的提醒');
+  dom.btnAi.textContent = L('AI 设置');
+  dom.input.placeholder = state.docsMode
+    ? L('查资料：关键词或文档地址，Enter 发送…')
+    : L('和桌宠聊聊…（Enter 发送 / Shift+Enter 换行）');
+  dom.sendBtn.title = state.busy ? L('停止生成') : L('发送');
+
+  quickSignature = '';
+  updateProblemChip();
+  chat.refreshEmpty();
+  if (state.snapshot) {
+    applySnapshot(state.snapshot);
+  }
+  if (currentDrawer) {
+    renderDrawer(currentDrawer);
+  }
+}
 
 /** 主题、背景、动效、排版、快捷按钮与自定义 CSS 都从这里落到 DOM 上。 */
 function applyAppearance(config: PetConfig): void {
@@ -360,7 +413,15 @@ function applyCustomCss(css: string): void {
   customStyle.textContent = css;
 }
 
+let quickSignature = '';
+
 function renderQuickActions(actions: QuickAction[]): void {
+  // 音量/缩放等设置也会触发 config 推送，没必要每次重建按钮
+  const signature = JSON.stringify(actions);
+  if (signature === quickSignature) {
+    return;
+  }
+  quickSignature = signature;
   dom.quick.innerHTML = '';
 
   actions.forEach((action, index) => {
@@ -376,7 +437,7 @@ function renderQuickActions(actions: QuickAction[]): void {
   const clear = document.createElement('button');
   clear.className = 'ghost';
   clear.dataset.quick = 'clear';
-  clear.textContent = '清空';
+  clear.textContent = L('清空');
   dom.quick.appendChild(clear);
 }
 
@@ -394,9 +455,14 @@ function segmented(
 
 function applySnapshot(snapshot: PetSnapshot): void {  state.snapshot = snapshot;
   dom.levelChip.textContent = `Lv.${snapshot.level}`;
-  dom.levelChip.title = `好感度 ${snapshot.affection} · 陪伴 ${snapshot.daysTogether} 天 · 互动 ${snapshot.totalChats + snapshot.totalClicks} 次`;
-  const name = state.config?.name ?? '桌宠';
-  dom.namePlate.textContent = `${name} · ${MOOD_LABEL[snapshot.mood] ?? '发呆中'}`;
+  dom.levelChip.title = L(
+    '好感度 {0} · 陪伴 {1} 天 · 互动 {2} 次',
+    snapshot.affection,
+    snapshot.daysTogether,
+    snapshot.totalChats + snapshot.totalClicks,
+  );
+  const name = state.config?.name ?? L('桌宠');
+  dom.namePlate.textContent = `${name} · ${moodLabel(snapshot.mood)}`;
 }
 
 let lastActionSound = 0;
@@ -430,7 +496,7 @@ function setBusy(busy: boolean, label?: string): void {
     dom.busyLabel.textContent = label;
   }
   dom.sendBtn.textContent = busy ? '■' : '↑';
-  dom.sendBtn.title = busy ? '停止生成' : '发送';
+  dom.sendBtn.title = busy ? L('停止生成') : L('发送');
   dom.sendBtn.classList.toggle('is-stop', busy);
   if (!busy) {
     state.busyLabel = undefined;
@@ -510,8 +576,8 @@ function setDocsMode(enabled: boolean): void {
   state.docsMode = enabled;
   dom.composer.classList.toggle('docs-mode', enabled);
   dom.input.placeholder = enabled
-    ? '查资料：关键词或文档地址，Enter 发送…'
-    : '和桌宠聊聊…（Enter 发送 / Shift+Enter 换行）';
+    ? L('查资料：关键词或文档地址，Enter 发送…')
+    : L('和桌宠聊聊…（Enter 发送 / Shift+Enter 换行）');
 
   dom.quick.querySelectorAll<HTMLElement>('[data-action-index]').forEach((button) => {
     const action = state.config?.quickActions[Number(button.dataset.actionIndex)];
@@ -537,7 +603,7 @@ function submit(): void {
   if (state.busy) {
     if (state.requestId) {
       post({ type: 'abort', id: state.requestId });
-      toast('已停止生成', 'info');
+      toast(L('已停止生成'), 'info');
     }
     return;
   }
@@ -658,7 +724,7 @@ function renderDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'sta
 }
 
 function renderGallery(): void {
-  dom.drawerTitle.textContent = '形象库';
+  dom.drawerTitle.textContent = L('形象库');
   const cards = state.assets
     .map((asset) => {
       const thumb = asset.previewUri
@@ -674,10 +740,10 @@ function renderGallery(): void {
 
   dom.drawerBody.innerHTML = `<div class="asset-grid">${cards}<button class="asset-card import" data-import="1">
       <span class="asset-thumb"><span class="asset-glyph">＋</span></span>
-      <span class="asset-name">导入形象</span>
-      <span class="asset-kind">Live2D / 3D / 图片</span>
+      <span class="asset-name">${L('导入形象')}</span>
+      <span class="asset-kind">${L('Live2D / 3D / 图片')}</span>
     </button></div>`;
-  dom.drawerFoot.innerHTML = '<span class="hint">支持 .model3.json、.vrm / .glb、png / gif / webp</span>';
+  dom.drawerFoot.innerHTML = `<span class="hint">${L('支持 .model3.json、.vrm / .glb、png / gif / webp')}</span>`;
 
   dom.drawerBody.querySelectorAll<HTMLElement>('.asset-card').forEach((card) => {
     card.addEventListener('click', () => {
@@ -696,26 +762,26 @@ function renderGallery(): void {
 }
 
 function renderSounds(): void {
-  dom.drawerTitle.textContent = '音效库';
+  dom.drawerTitle.textContent = L('音效库');
   const rows = SOUND_SLOTS.map(({ slot, label }) => {
     const bound = state.config?.assets.sounds[slot];
     const options = [
-      `<option value="__synth__"${bound ? '' : ' selected'}>内置合成音</option>`,
+      `<option value="__synth__"${bound ? '' : ' selected'}>${L('内置合成音')}</option>`,
       ...state.sounds.map(
         (sound) => `<option value="${escapeAttr(sound.id)}"${bound === sound.uri ? ' selected' : ''}>${escapeText(sound.name)}</option>`,
       ),
     ].join('');
     return `<div class="sound-row" data-slot="${slot}">
-      <div class="sound-label">${label}</div>
+      <div class="sound-label">${L(label)}</div>
       <div class="sound-controls">
         <select data-role="select">${options}</select>
-        <button class="ghost-btn" data-role="preview" title="试听">♪</button>
+        <button class="ghost-btn" data-role="preview" title="${L('试听')}">♪</button>
       </div>
     </div>`;
   }).join('');
 
   dom.drawerBody.innerHTML = `<div class="sound-list">${rows}</div>`;
-  dom.drawerFoot.innerHTML = '<button class="primary-btn" id="sound-import">导入音效文件…</button>';
+  dom.drawerFoot.innerHTML = `<button class="primary-btn" id="sound-import">${L('导入音效文件…')}</button>`;
 
   dom.drawerBody.querySelectorAll<HTMLElement>('.sound-row').forEach((row) => {
     const slot = row.dataset.slot as SoundSlot;
@@ -757,20 +823,21 @@ function updateProblemChip(): void {
   dom.problemChip.textContent = `⚠ ${total}`;
   dom.problemChip.classList.toggle('has-error', errors > 0);
   dom.problemChip.title = state.problemsFile
-    ? `${state.problemsFile}：${errors} 个错误，${total - errors} 条其它提示`
-    : '当前文件的问题';
+    ? L('{0}：{1} 个错误，{2} 条其它提示', state.problemsFile, errors, total - errors)
+    : L('当前文件的问题');
 }
 
 function renderProblems(): void {
-  dom.drawerTitle.textContent = state.problems.length ? `问题清单 · ${state.problems.length}` : '问题清单';
+  dom.drawerTitle.textContent = state.problems.length
+    ? L('问题清单 · {0}', state.problems.length)
+    : L('问题清单');
 
   if (!state.problems.length) {
-    dom.drawerBody.innerHTML =
-      '<div class="empty-state">当前文件没有诊断问题。<br/>可以点下面的「体检整个文件」做一次静态检查。</div>';
+    dom.drawerBody.innerHTML = `<div class="empty-state">${L('当前文件没有诊断问题。<br/>可以点下面的「体检整个文件」做一次静态检查。')}</div>`;
   } else {
     const errorCount = state.problems.filter((item) => item.severity === 'error').length;
     dom.drawerBody.innerHTML = `
-      ${errorCount > 0 ? `<button class="primary-btn fix-all-btn" id="fix-all">一键修复全部错误（${errorCount}）</button>` : ''}
+      ${errorCount > 0 ? `<button class="primary-btn fix-all-btn" id="fix-all">${L('一键修复全部错误（{0}）', errorCount)}</button>` : ''}
       <div class="problem-list">${state.problems
         .map(
           (item) => `<div class="problem-row sev-${item.severity}">
@@ -780,8 +847,8 @@ function renderProblems(): void {
               <span class="problem-msg">${escapeText(item.message)}</span>
             </div>
             <div class="problem-actions">
-              <button data-problem-action="explain" data-line="${item.line}">解释</button>
-              <button data-problem-action="fix" data-line="${item.line}">修复</button>
+              <button data-problem-action="explain" data-line="${item.line}">${L('解释')}</button>
+              <button data-problem-action="fix" data-line="${item.line}">${L('修复')}</button>
             </div>
           </div>`,
         )
@@ -789,8 +856,8 @@ function renderProblems(): void {
   }
 
   dom.drawerFoot.innerHTML = `<div class="drawer-actions">
-    <button class="primary-btn" id="review-file">体检整个文件</button>
-    <button class="ghost-btn" id="analyze-clipboard">分析剪贴板里的报错</button>
+    <button class="primary-btn" id="review-file">${L('体检整个文件')}</button>
+    <button class="ghost-btn" id="analyze-clipboard">${L('分析剪贴板里的报错')}</button>
   </div>`;
 
   dom.drawerFoot.querySelector('#review-file')?.addEventListener('click', () => {
@@ -820,42 +887,43 @@ function renderProblems(): void {
 
 function renderStandards(): void {
   const standards = state.standards;
-  dom.drawerTitle.textContent = '代码规范';
+  const english = getLanguage() === 'en';
+  dom.drawerTitle.textContent = L('代码规范');
 
   const conventions = (standards?.conventions ?? []).length
     ? (standards?.conventions ?? [])
         .map((line) => `<li>${escapeText(line.replace(/^-\s*/, ''))}</li>`)
         .join('')
-    : '<li>索引完成后会显示检测到的项目约定</li>';
+    : `<li>${L('索引完成后会显示检测到的项目约定')}</li>`;
 
   const packs = (standards?.packs ?? [])
     .map(
       (pack) => `<label class="pack-row">
         <input type="checkbox" data-pack="${escapeAttr(pack.id)}" ${pack.enabled ? 'checked' : ''}/>
-        <span class="pack-text"><b>${escapeText(pack.label)}</b><em>${escapeText(pack.description)}</em></span>
+        <span class="pack-text"><b>${escapeText(english ? pack.labelEn ?? pack.label : pack.label)}</b><em>${escapeText(english ? pack.descriptionEn ?? pack.description : pack.description)}</em></span>
       </label>`,
     )
     .join('');
 
   dom.drawerBody.innerHTML = `
     <div class="standards-section">
-      <div class="section-title">检测到的约定</div>
+      <div class="section-title">${L('检测到的约定')}</div>
       <ul class="convention-list">${conventions}</ul>
     </div>
     <div class="standards-section">
-      <div class="section-title">规则包</div>
-      <div class="pack-list">${packs || '<div class="hint">正在读取配置…</div>'}</div>
+      <div class="section-title">${L('规则包')}</div>
+      <div class="pack-list">${packs || `<div class="hint">${L('正在读取配置…')}</div>`}</div>
     </div>
     <div class="standards-meta">
-      <span>自定义规则 ${standards?.customCount ?? 0} 条</span>
-      <span>白名单 ${standards?.whitelistCount ?? 0} 条</span>
+      <span>${L('自定义规则 {0} 条', standards?.customCount ?? 0)}</span>
+      <span>${L('白名单 {0} 条', standards?.whitelistCount ?? 0)}</span>
     </div>
-    <div class="hint">规则和风格会写进每次生成的提示词；白名单里的规则不会被扫描，也不会被“修复”。</div>`;
+    <div class="hint">${L('规则和风格会写进每次生成的提示词；白名单里的规则不会被扫描，也不会被“修复”。')}</div>`;
 
   dom.drawerFoot.innerHTML = `<div class="drawer-actions">
-    <button class="primary-btn" id="review-rules">按规范检查当前文件</button>
-    <button class="ghost-btn" id="modernize-selection">现代化重构选中代码</button>
-    <button class="ghost-btn" id="edit-standards">编辑规则与白名单</button>
+    <button class="primary-btn" id="review-rules">${L('按规范检查当前文件')}</button>
+    <button class="ghost-btn" id="modernize-selection">${L('现代化重构选中代码')}</button>
+    <button class="ghost-btn" id="edit-standards">${L('编辑规则与白名单')}</button>
   </div>`;
 
   dom.drawerBody.querySelectorAll<HTMLInputElement>('[data-pack]').forEach((input) => {
@@ -884,7 +952,7 @@ function renderStandards(): void {
         command: 'deskpet.updateSetting',
         args: { key: 'standards.packs', value: [...enabled] },
       });
-      toast(`规则包已更新，${enabled.size} 个启用`);
+      toast(L('规则包已更新，{0} 个启用', enabled.size));
     });
   });
 
@@ -915,108 +983,109 @@ function settingScope(): 'global' | 'workspace' {
 function renderPalette(): void {
   const config = state.config;
   if (!config) {
-    dom.drawerTitle.textContent = '个性化';
-    dom.drawerBody.innerHTML = '<div class="hint">正在加载配置…</div>';
+    dom.drawerTitle.textContent = L('个性化');
+    dom.drawerBody.innerHTML = `<div class="hint">${L('正在加载配置…')}</div>`;
     return;
   }
 
   const theme = config.theme;
-  dom.drawerTitle.textContent = '个性化';
+  const english = getLanguage() === 'en';
+  dom.drawerTitle.textContent = L('个性化');
 
   const swatches = THEME_PRESETS.map(
     (preset) => `<button class="swatch ${theme.id === preset.id ? 'active' : ''}" data-theme="${preset.id}">
       <span class="swatch-dot" style="${preset.accent ? `background:${preset.accent}` : 'background:linear-gradient(135deg,#4ec9b0,#ffb27a)'}"></span>
-      <span class="swatch-label">${escapeText(preset.label)}</span>
+      <span class="swatch-label">${escapeText(english ? preset.labelEn : preset.label)}</span>
     </button>`,
   ).join('');
 
-  const actions = config.quickActions.length ? config.quickActions : DEFAULT_QUICK_ACTIONS;
+  const actions = config.quickActions.length ? config.quickActions : defaultQuickActions(getLanguage());
   const rows = actions
     .map(
       (action, index) => `<div class="qa-row" data-index="${index}">
-        <input class="qa-label" value="${escapeAttr(action.label)}" maxlength="20" placeholder="按钮文字" />
-        <input class="qa-command" value="${escapeAttr(action.command ?? (action.text === '__docs__' ? '__docs__' : ''))}" placeholder="命令 id 或 __docs__" />
-        <button class="qa-remove" title="删除">×</button>
+        <input class="qa-label" value="${escapeAttr(action.label)}" maxlength="20" placeholder="${L('按钮文字')}" />
+        <input class="qa-command" value="${escapeAttr(action.command ?? (action.text === '__docs__' ? '__docs__' : ''))}" placeholder="${L('命令 id 或 __docs__')}" />
+        <button class="qa-remove" title="${L('删除')}">×</button>
       </div>`,
     )
     .join('');
 
   dom.drawerBody.innerHTML = `
     <div class="standards-section">
-      <div class="section-title">写入范围</div>
+      <div class="section-title">${L('写入范围')}</div>
       <div class="segmented" id="scope-switch">
-        <button data-scope="global" class="${state.scope === 'global' ? 'active' : ''}">全局</button>
-        <button data-scope="workspace" class="${state.scope === 'workspace' ? 'active' : ''}" ${config.themeScope?.hasWorkspace ? '' : 'disabled'}>当前工作区</button>
+        <button data-scope="global" class="${state.scope === 'global' ? 'active' : ''}">${L('全局')}</button>
+        <button data-scope="workspace" class="${state.scope === 'workspace' ? 'active' : ''}" ${config.themeScope?.hasWorkspace ? '' : 'disabled'}>${L('当前工作区')}</button>
       </div>
       ${
         config.themeScope?.workspaceOverride
-          ? '<div class="scope-note">当前工作区已有独立主题 <button id="clear-scope">清除</button></div>'
+          ? `<div class="scope-note">${L('当前工作区已有独立主题')} <button id="clear-scope">${L('清除')}</button></div>`
           : ''
       }
     </div>
 
     <div class="standards-section">
-      <div class="section-title">主题</div>
+      <div class="section-title">${L('主题')}</div>
       <div class="swatch-grid">${swatches}</div>
       <div class="accent-row">
-        <span>自定义主色</span>
+        <span>${L('自定义主色')}</span>
         <input type="color" id="accent-color" value="${theme.accent}" />
         <code id="accent-hex">${theme.accent}</code>
       </div>
     </div>
 
     <div class="standards-section">
-      <div class="section-title">主题包</div>
+      <div class="section-title">${L('主题包')}</div>
       <div class="qa-actions">
-        <button class="ghost-btn" id="theme-import">导入…</button>
-        <button class="ghost-btn" id="theme-export">导出…</button>
+        <button class="ghost-btn" id="theme-import">${L('导入…')}</button>
+        <button class="ghost-btn" id="theme-export">${L('导出…')}</button>
       </div>
-      <div class="hint">导出为 JSON 分享给同事；导入会逐字段校验，坏值回退默认。</div>
+      <div class="hint">${L('导出为 JSON 分享给同事；导入会逐字段校验，坏值回退默认。')}</div>
     </div>
 
     <div class="standards-section">
-      <div class="section-title">背景</div>
-      ${segmented('background', [['grid', '网格'], ['plain', '纯色'], ['none', '极简']], theme.background)}
+      <div class="section-title">${L('背景')}</div>
+      ${segmented('background', [['grid', L('网格')], ['plain', L('纯色')], ['none', L('极简')]], theme.background)}
     </div>
     <div class="standards-section">
-      <div class="section-title">动效</div>
-      ${segmented('motion', [['full', '完整'], ['lite', '轻量'], ['off', '关闭']], theme.motion)}
+      <div class="section-title">${L('动效')}</div>
+      ${segmented('motion', [['full', L('完整')], ['lite', L('轻量')], ['off', pick('关闭', 'Off')]], theme.motion)}
     </div>
     <div class="standards-section">
-      <div class="section-title">排版</div>
-      ${segmented('density', [['compact', '紧凑'], ['cozy', '标准'], ['comfortable', '宽松']], theme.density)}
+      <div class="section-title">${L('排版')}</div>
+      ${segmented('density', [['compact', L('紧凑')], ['cozy', pick('标准', 'Cozy')], ['comfortable', L('宽松')]], theme.density)}
     </div>
 
     <div class="setting">
-      <div class="setting-head"><span>显示名牌</span></div>
+      <div class="setting-head"><span>${L('显示名牌')}</span></div>
       <label class="switch"><input type="checkbox" id="nameplate-toggle" ${theme.nameplate ? 'checked' : ''}/><span></span></label>
     </div>
 
     <div class="standards-section">
-      <div class="section-title">快捷按钮</div>
+      <div class="section-title">${L('快捷按钮')}</div>
       <div class="qa-list" id="qa-list">${rows}</div>
       <div class="qa-actions">
-        <button class="ghost-btn" id="qa-add">+ 添加</button>
-        <button class="primary-btn" id="qa-save">保存</button>
+        <button class="ghost-btn" id="qa-add">${L('+ 添加')}</button>
+        <button class="primary-btn" id="qa-save">${L('保存')}</button>
       </div>
-      <div class="hint">命令 id 填 <code>__docs__</code> 表示切换到查资料模式；留空的按钮不会保存。</div>
+      <div class="hint">${L('命令 id 填 __docs__ 表示切换到查资料模式；留空的按钮不会保存。')}</div>
     </div>
 
     <div class="standards-section">
-      <div class="section-title">自定义 CSS</div>
+      <div class="section-title">${L('自定义 CSS')}</div>
       <textarea id="custom-css" rows="5" placeholder=".msg { border-radius: 4px; }">${escapeText(theme.customCss)}</textarea>
       <div class="css-chips">
         ${CSS_SNIPPETS.map(
-          ([label]) => `<button class="chip" data-css-snippet="${escapeAttr(label)}">${escapeText(label)}</button>`,
+          ([label]) => `<button class="chip" data-css-snippet="${escapeAttr(label)}">${escapeText(L(label))}</button>`,
         ).join('')}
       </div>
       <div class="qa-actions">
-        <button class="ghost-btn" id="css-revert">撤销预览</button>
-        <button class="primary-btn" id="css-apply">保存 CSS</button>
+        <button class="ghost-btn" id="css-revert">${L('撤销预览')}</button>
+        <button class="primary-btn" id="css-apply">${L('保存 CSS')}</button>
       </div>
     </div>`;
 
-  dom.drawerFoot.innerHTML = '<span class="hint">改动即时预览，并写入你的 VS Code 设置</span>';
+  dom.drawerFoot.innerHTML = `<span class="hint">${L('改动即时预览，并写入你的 VS Code 设置')}</span>`;
 
   dom.drawerBody.querySelectorAll<HTMLElement>('[data-theme]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -1099,8 +1168,7 @@ function renderPalette(): void {
     }
     const row = document.createElement('div');
     row.className = 'qa-row';
-    row.innerHTML =
-      '<input class="qa-label" maxlength="20" placeholder="按钮文字"/><input class="qa-command" placeholder="命令 id"/><button class="qa-remove" title="删除">×</button>';
+    row.innerHTML = `<input class="qa-label" maxlength="20" placeholder="${L('按钮文字')}"/><input class="qa-command" placeholder="${L('命令 id 或 __docs__')}"/><button class="qa-remove" title="${L('删除')}">×</button>`;
     list.appendChild(row);
     wireRemove(row);
   });
@@ -1125,11 +1193,11 @@ function renderPalette(): void {
       }
     });
 
-    const actions = next.length ? next.slice(0, 10) : [...DEFAULT_QUICK_ACTIONS];
+    const actions = next.length ? next.slice(0, 10) : defaultQuickActions(getLanguage());
     state.config.quickActions = actions;
     applyAppearance(state.config);
     post({ type: 'command', command: 'deskpet.updateSetting', args: { scope: settingScope(), key: 'ui.quickActions', value: actions } });
-    toast('快捷按钮已保存');
+    toast(L('快捷按钮已保存'));
     renderPalette();
   });
 
@@ -1167,7 +1235,7 @@ function renderPalette(): void {
       command: 'deskpet.updateSetting',
       args: { scope: settingScope(), key: 'ui.customCss', value: css },
     });
-    toast('自定义 CSS 已保存');
+    toast(L('自定义 CSS 已保存'));
   });
 
   dom.drawerBody.querySelector('#css-revert')?.addEventListener('click', () => {
@@ -1176,7 +1244,7 @@ function renderPalette(): void {
     }
     cssBox.value = savedCss;
     previewCss(savedCss);
-    toast('已撤销未保存的 CSS 预览');
+    toast(L('已撤销未保存的 CSS 预览'));
   });
 
   dom.drawerBody.querySelectorAll<HTMLButtonElement>('#scope-switch [data-scope]').forEach((button) => {
@@ -1188,7 +1256,11 @@ function renderPalette(): void {
       state.scope = value;
       vscode.setState({ ...(vscode.getState() ?? {}), scope: value });
       renderPalette();
-      toast(value === 'workspace' ? '之后的外观改动只写入当前工作区' : '之后的外观改动写入全局设置');
+      toast(
+        value === 'workspace'
+          ? L('之后的外观改动只写入当前工作区')
+          : L('之后的外观改动写入全局设置'),
+      );
     });
   });
 
@@ -1204,72 +1276,72 @@ function renderPalette(): void {
 }
 
 function renderSettings(): void {
-  dom.drawerTitle.textContent = '设置';
+  dom.drawerTitle.textContent = L('设置');
   const config = state.config;
   const snapshot = state.snapshot;
   dom.drawerBody.innerHTML = `
     <div class="setting">
-      <div class="setting-head"><span>语音朗读回复</span></div>
+      <div class="setting-head"><span>${L('语音朗读回复')}</span></div>
       <label class="switch"><input type="checkbox" id="set-tts" ${config?.tts ? 'checked' : ''}/><span></span></label>
     </div>
     <div class="setting">
-      <div class="setting-head"><span>打扰程度</span><em id="interruption-value">平衡</em></div>
+      <div class="setting-head"><span>${L('打扰程度')}</span><em id="interruption-value">${L('平衡')}</em></div>
       <div class="segmented" id="set-interruption">
-        <button data-value="quiet">安静</button>
-        <button data-value="balanced">平衡</button>
-        <button data-value="chatty">话多</button>
+        <button data-value="quiet">${L('安静')}</button>
+        <button data-value="balanced">${L('平衡')}</button>
+        <button data-value="chatty">${L('话多')}</button>
       </div>
     </div>
     <div class="setting">
-      <div class="setting-head"><span>怎么称呼你</span></div>
-      <input class="text-input" id="user-name" maxlength="40" placeholder="可留空" value="${escapeAttr(config?.persona.userName ?? '')}" />
+      <div class="setting-head"><span>${L('怎么称呼你')}</span></div>
+      <input class="text-input" id="user-name" maxlength="40" placeholder="${L('可留空')}" value="${escapeAttr(config?.persona.userName ?? '')}" />
     </div>
     <div class="setting">
-      <div class="setting-head"><span>语气</span><em id="tone-value">温和</em></div>
+      <div class="setting-head"><span>${L('语气')}</span><em id="tone-value">${L('温和')}</em></div>
       <div class="segmented" id="set-tone">
-        <button data-value="warm">温和</button>
-        <button data-value="sharp">犀利</button>
-        <button data-value="concise">简洁</button>
-        <button data-value="chuuni">中二</button>
+        <button data-value="warm">${L('温和')}</button>
+        <button data-value="sharp">${L('犀利')}</button>
+        <button data-value="concise">${L('简洁')}</button>
+        <button data-value="chuuni">${L('中二')}</button>
       </div>
     </div>
     <div class="setting">
-      <div class="setting-head"><span>回复长度</span><em id="length-value">标准</em></div>
+      <div class="setting-head"><span>${L('回复长度')}</span><em id="length-value">${pick('标准', 'Normal')}</em></div>
       <div class="segmented" id="set-length">
-        <button data-value="short">短</button>
-        <button data-value="normal">标准</button>
-        <button data-value="detailed">详细</button>
+        <button data-value="short">${L('短')}</button>
+        <button data-value="normal">${pick('标准', 'Normal')}</button>
+        <button data-value="detailed">${L('详细')}</button>
       </div>
     </div>
     <div class="setting">
-      <div class="setting-head"><span>开场白</span></div>
-      <input class="text-input" id="greeting" maxlength="200" placeholder="留空使用默认" value="${escapeAttr(config?.greeting ?? '')}" />
+      <div class="setting-head"><span>${L('开场白')}</span></div>
+      <input class="text-input" id="greeting" maxlength="200" placeholder="${L('留空使用默认')}" value="${escapeAttr(config?.greeting ?? '')}" />
     </div>
     <div class="setting">
-      <div class="setting-head"><span>音量</span><em id="volume-value">${Math.round((config?.volume ?? 0.6) * 100)}%</em></div>
+      <div class="setting-head"><span>${L('音量')}</span><em id="volume-value">${Math.round((config?.volume ?? 0.6) * 100)}%</em></div>
       <input type="range" id="set-volume" min="0" max="100" value="${Math.round((config?.volume ?? 0.6) * 100)}" />
     </div>
     <div class="setting">
-      <div class="setting-head"><span>形象大小</span><em id="scale-value">${Math.round((config?.scale ?? 1) * 100)}%</em></div>
+      <div class="setting-head"><span>${L('形象大小')}</span><em id="scale-value">${Math.round((config?.scale ?? 1) * 100)}%</em></div>
       <input type="range" id="set-scale" min="50" max="200" value="${Math.round((config?.scale ?? 1) * 100)}" />
     </div>
     <div class="setting-info">
-      <div><span>AI</span><strong>${escapeText(config?.aiProviderLabel ?? '未配置')}</strong></div>
-      <div><span>模型</span><strong>${escapeText(config?.aiModel ?? '-')}</strong></div>
-      <div><span>好感</span><strong>Lv.${snapshot?.level ?? 1} · ${snapshot?.affection ?? 0}</strong></div>
-      <div><span>陪伴</span><strong>${snapshot?.daysTogether ?? 1} 天</strong></div>
+      <div><span>AI</span><strong>${escapeText(config?.aiProviderLabel ?? L('未配置'))}</strong></div>
+      <div><span>${L('模型')}</span><strong>${escapeText(config?.aiModel ?? '-')}</strong></div>
+      <div><span>${L('好感')}</span><strong>Lv.${snapshot?.level ?? 1} · ${snapshot?.affection ?? 0}</strong></div>
+      <div><span>${L('陪伴')}</span><strong>${snapshot?.daysTogether ?? 1} ${L('天')}</strong></div>
     </div>
     <div class="drawer-actions">
-      <button class="primary-btn" id="btn-set-key">设置密钥</button>
-      <button class="ghost-btn" id="btn-goto-settings">打开全部设置</button>
-      <button class="ghost-btn danger" id="btn-reset-pet">重置桌宠</button>
+      <button class="primary-btn" id="btn-set-key">${L('设置密钥')}</button>
+      <button class="ghost-btn" id="btn-goto-settings">${L('打开全部设置')}</button>
+      <button class="ghost-btn danger" id="btn-reset-pet">${L('重置桌宠')}</button>
     </div>`;
 
   const tts = dom.drawerBody.querySelector<HTMLInputElement>('#set-tts');
   tts?.addEventListener('change', () => {
     post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'pet.tts', value: Boolean(tts.checked) } });
     if (tts.checked) {
-      audio.speak('好呀，以后我会念给你听。', state.config?.ttsRate ?? 1);
+      audio.speak(L('好呀，以后我会念给你听。'), state.config?.ttsRate ?? 1);
     }
   });
 
@@ -1282,7 +1354,7 @@ function renderSettings(): void {
       button.classList.toggle('active', button.dataset.value === current);
     });
     if (interruptionValue) {
-      interruptionValue.textContent = interruptionLabels[current];
+      interruptionValue.textContent = L(interruptionLabels[current]);
     }
   };
   markInterruption();
@@ -1296,16 +1368,16 @@ function renderSettings(): void {
       markInterruption();
       toast(
         value === 'quiet'
-          ? '安静模式：提醒只写进对话，不弹气泡'
+          ? L('安静模式：提醒只写进对话，不弹气泡')
           : value === 'chatty'
-            ? '话多模式：提醒会直接弹气泡'
-            : '平衡模式：重要提醒才弹气泡，打字时不打扰',
+            ? L('话多模式：提醒会直接弹气泡')
+            : L('平衡模式：重要提醒才弹气泡，打字时不打扰'),
       );
     });
   });
 
-  const toneLabels: Record<PetTone, string> = { warm: '温和', sharp: '犀利', concise: '简洁', chuuni: '中二' };
-  const lengthLabels: Record<ReplyLength, string> = { short: '短', normal: '标准', detailed: '详细' };
+  const toneLabels: Record<PetTone, string> = { warm: L('温和'), sharp: L('犀利'), concise: L('简洁'), chuuni: L('中二') };
+  const lengthLabels: Record<ReplyLength, string> = { short: L('短'), normal: pick('标准', 'Normal'), detailed: L('详细') };
 
   const markSegmented = (selector: string, value: string) => {
     dom.drawerBody.querySelector(selector)?.querySelectorAll<HTMLElement>('button').forEach((button) => {
@@ -1416,17 +1488,17 @@ function renderSettings(): void {
     post({ type: 'command', command: CMD.resetPet });
   });
 
-  dom.drawerFoot.innerHTML = '<span class="hint">改完即时生效，设置会写入你的 VS Code 配置</span>';
+  dom.drawerFoot.innerHTML = `<span class="hint">${L('改完即时生效，设置会写入你的 VS Code 配置')}</span>`;
 }
 
-el('btn-gallery').addEventListener('click', () => openDrawer('gallery'));
-el('btn-sound').addEventListener('click', () => openDrawer('sound'));
-el('btn-standards').addEventListener('click', () => openDrawer('standards'));
-el('btn-palette').addEventListener('click', () => openDrawer('palette'));
-el('btn-settings').addEventListener('click', () => openDrawer('settings'));
+dom.btnGallery.addEventListener('click', () => openDrawer('gallery'));
+dom.btnSound.addEventListener('click', () => openDrawer('sound'));
+dom.btnStandards.addEventListener('click', () => openDrawer('standards'));
+dom.btnPalette.addEventListener('click', () => openDrawer('palette'));
+dom.btnSettings.addEventListener('click', () => openDrawer('settings'));
 dom.problemChip.addEventListener('click', () => openDrawer('problems'));
-el('btn-open-panel').addEventListener('click', () => post({ type: 'command', command: CMD.openPanel }));
-el('drawer-close').addEventListener('click', closeDrawer);
+dom.btnOpenPanel.addEventListener('click', () => post({ type: 'command', command: CMD.openPanel }));
+dom.drawerClose.addEventListener('click', closeDrawer);
 dom.btnAi.addEventListener('click', () => openDrawer('settings'));
 dom.drawer.addEventListener('click', (event) => {
   if (event.target === dom.drawer) {
@@ -1491,9 +1563,9 @@ dom.chatLog.addEventListener('click', (event) => {
     }
     const text = decodeURIComponent(raw);
     post({ type: 'command', command: 'deskpet.copyText', args: text });
-    copy.textContent = '已复制';
+    copy.textContent = L('已复制');
     window.setTimeout(() => {
-      copy.textContent = '复制';
+      copy.textContent = L('复制');
     }, 1200);
   }
 });
@@ -1547,13 +1619,13 @@ function glyphFor(kind: AssetItem['kind']): string {
 function kindLabel(kind: AssetItem['kind']): string {
   switch (kind) {
     case 'builtin':
-      return '内置';
+      return L('内置');
     case 'live2d':
       return 'Live2D';
     case 'vrm':
       return '3D';
     default:
-      return '图片';
+      return L('图片');
   }
 }
 

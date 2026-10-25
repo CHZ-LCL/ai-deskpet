@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import type {
@@ -62,7 +63,7 @@ async function exportTheme(host: PetHost, context: vscode.ExtensionContext): Pro
   }
 
   await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(JSON.stringify(file, null, 2)));
-  host.say('主题已导出，可以直接分享给同事。', { action: 'happy' });
+  host.say(L('主题已导出，可以直接分享给同事。', `Theme exported — share it with your team.`), { action: 'happy' });
 }
 
 async function importTheme(host: PetHost): Promise<void> {
@@ -109,7 +110,7 @@ async function importTheme(host: PetHost): Promise<void> {
   }
 
   await applyThemeFile(parsed.file, scope.target);
-  host.say(`主题「${parsed.file.name ?? '导入'}」已经换上了，看看合不合眼。`, { action: 'shy' });
+  host.say(L(`主题「${parsed.file.name ?? '导入'}」已经换上了，看看合不合眼。`, `Theme “${parsed.file.name ?? 'imported'}” is applied — take a look.`), { action: 'shy' });
 }
 
 async function applyThemeFile(file: ThemeFile, target: vscode.ConfigurationTarget): Promise<void> {
@@ -128,7 +129,7 @@ async function applyThemeFile(file: ThemeFile, target: vscode.ConfigurationTarge
 
 async function clearWorkspaceTheme(host: PetHost): Promise<void> {
   if (!vscode.workspace.workspaceFolders?.length) {
-    host.say('没有打开工作区，没有可清除的覆盖。', { action: 'think' });
+    host.say(L('没有打开工作区，没有可清除的覆盖。', `No workspace is open, so there is no override to clear.`), { action: 'think' });
     return;
   }
 
@@ -145,5 +146,5 @@ async function clearWorkspaceTheme(host: PetHost): Promise<void> {
   for (const key of UI_KEYS) {
     await config.update(key, undefined, vscode.ConfigurationTarget.Workspace);
   }
-  host.say('已恢复全局主题。', { action: 'happy' });
+  host.say(L('已恢复全局主题。', `Global theme restored.`), { action: 'happy' });
 }

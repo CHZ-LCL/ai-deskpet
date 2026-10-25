@@ -1,3 +1,4 @@
+import { L } from './i18n';
 import * as vscode from 'vscode';
 import { API_KEY_SECRET } from './ai';
 import { bindAdviceActions, focusPet, registerAssistCommands } from './commands/assist';
@@ -69,7 +70,7 @@ export function activate(context: vscode.ExtensionContext): void {
   register(CMD.resetPet, () => resetPet(host, state));
   register(CMD.reindex, async () => {
     await project.rebuild();
-    host.notice(`项目索引完成：${project.label}`, 'info');
+    host.notice(L(`项目索引完成：${project.label}`, `Project index ready: ${project.label}`), 'info');
   });
   register(CMD.openSettings, () => vscode.commands.executeCommand('workbench.action.openSettings', 'deskpet'));
 
@@ -188,7 +189,7 @@ async function setApiKey(context: vscode.ExtensionContext, host: PetHost): Promi
   if (target.value === 'clear') {
     await context.secrets.delete(API_KEY_SECRET);
     await context.secrets.delete(DOCS_KEY_SECRET);
-    host.notice('已清除保存的密钥', 'info');
+    host.notice(L('已清除保存的密钥', `Saved API key cleared`), 'info');
     return;
   }
 
@@ -203,7 +204,7 @@ async function setApiKey(context: vscode.ExtensionContext, host: PetHost): Promi
   }
 
   await context.secrets.store(target.value === 'ai' ? API_KEY_SECRET : DOCS_KEY_SECRET, key.trim());
-  host.notice('密钥已保存', 'info');
+  host.notice(L('密钥已保存', `API key saved`), 'info');
   host.say(target.value === 'ai' ? '密钥收到，我这就试试能不能连上。' : '搜索密钥收到，以后查资料会更准。', {
     action: 'happy',
   });
@@ -222,7 +223,7 @@ async function resetPet(host: PetHost, state: PetState): Promise<void> {
   await state.reset();
   await host.clearHistory();
   await host.refreshAll();
-  host.say('我们重新认识一下吧，我是你的编程搭子。', { action: 'shy' });
+  host.say(L('我们重新认识一下吧，我是你的编程搭子。', `Let’s start fresh — I’m your coding buddy.`), { action: 'shy' });
 }
 
 function registerReactions(context: vscode.ExtensionContext, host: PetHost, project: ProjectContext): void {

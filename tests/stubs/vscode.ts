@@ -4,6 +4,8 @@
  */
 export const configStore: Record<string, unknown> = {};
 
+export const env = { language: 'en' };
+
 export function resetConfig(values: Record<string, unknown> = {}): void {
   for (const key of Object.keys(configStore)) {
     delete configStore[key];

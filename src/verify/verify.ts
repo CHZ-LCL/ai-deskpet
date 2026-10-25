@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import type { FixMeta } from '../history/fixHistory';
@@ -141,7 +142,7 @@ export async function verifyAfterEdit(
   if (choice === '回退这次修改' && meta) {
     const history = getFixHistory();
     if (history && (await restoreFix(history, meta.id))) {
-      host.say('已回退这次修改，回到修改前。', { action: 'shy' });
+      host.say(L('已回退这次修改，回到修改前。', `Reverted this edit to the previous version.`), { action: 'shy' });
     }
   } else if (choice === '再修一次') {
     await vscode.commands.executeCommand(CMD.fixAll);

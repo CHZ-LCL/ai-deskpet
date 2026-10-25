@@ -2,6 +2,8 @@
 
 > 一只住在 VS Code 里的编程搭子：会聊天、会看你的代码、会陪你把 bug 修完，还能换成你自己画的 Live2D 或 3D 形象。
 
+[English](README.en.md) | 简体中文
+
 - **双形态**：常驻侧边栏，也可以拖成编辑器标签放大看。
 - **行内对话**：`Ctrl+Alt+K` 直接在代码旁开问，答案挂在评论线程里，一键应用/看差异。
 - **CodeLens**：每个函数上方「讲解 / 重构」，不用选中、不用切面板。
@@ -11,6 +13,7 @@
 - **音效随便换**：按场景绑定自定义音效，没配就用内置合成音；支持系统 TTS 朗读。
 - **AI 后端三选一**：本机 Ollama（默认）、任意 OpenAI 兼容接口、VS Code 语言模型 API。
 - **外观随便调**：主题色板、自定义主色、背景/动效/排版、快捷按钮、自定义 CSS。
+- **中英双语**：默认跟随 VS Code 显示语言，也可以用 `deskpet.ui.language` 强制中文或 English。
 
 > 需要 **VS Code 1.93+**（终端失败捕获依赖 Shell Integration；其它功能在更早版本也能用，但插件会要求 1.93）。
 
@@ -580,6 +583,7 @@ ollama pull qwen2.5-coder:14b
 
 | 设置 | 默认值 | 说明 |
 | --- | --- | --- |
+| `deskpet.ui.language` | `auto` | 界面与 AI 回复语言：`auto` / `zh` / `en` |
 | `deskpet.pet.name` | `小豆` | 桌宠名字 |
 | `deskpet.pet.renderer` | `builtin` | `builtin` / `image` / `live2d` / `vrm` |
 | `deskpet.pet.modelPath` | 空 | 形象文件路径（绝对或相对工作区） |
@@ -718,9 +722,10 @@ npm run preview     # 起一个静态服务，看 dev/preview.html
 
 `dev/preview.html` 是纯前端的界面预览：用 stub 的 `acquireVsCodeApi` 注入一段示例数据，
 可以在浏览器里快速调样式，不用每次重载 VS Code。改完 `webview/` 后需要先 `npm run compile`。
+加 `?lang=en` 可以预览英文界面，`?theme=sakura` 切主题，`?settings` / `?palette` / `?standards` / `?problems` 直接打开对应抽屉。
 
 ```bash
-npm test               # 单元测试（57 个）
+npm test               # 单元测试（63 个）
 npm run test:integration  # 真实 VS Code 集成测试（首次会下载 VS Code）
 npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 ```
@@ -735,7 +740,7 @@ npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 
 | 命令 | 内容 | 依赖 |
 | --- | --- | --- |
-| `npm test` | 57 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
+| `npm test` | 63 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
 | `npm run test:integration` | 4 个集成测试 | 下载 stable VS Code，真实激活扩展 |
 | `npm run test:visual` | 暗色 / 亮色截图对比 | headless Chrome + pngjs |
 
@@ -821,7 +826,8 @@ git push -u origin main
 - [ ] 语音输入（Whisper / 系统听写）
 - [ ] 形象包市场：一键安装 Live2D / VRM 主题
 - [ ] 项目索引升级：本地 embedding 语义检索 + 跨文件调用链分析
-- [ ] 多语言界面（English / 日本語）
+- [x] 中英双语界面（跟随 VS Code 显示语言，`deskpet.ui.language` 可强制切换）
+- [ ] 日本語界面
 - [ ] 单元测试与 webview E2E（Playwright）
 - [ ] 对话内直接执行「应用 diff / 新建文件」的事务式确认
 

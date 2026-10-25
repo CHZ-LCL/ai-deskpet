@@ -2,6 +2,28 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- 中英双语界面：默认跟随 VS Code 显示语言，`deskpet.ui.language` 可强制 `zh` / `en`。
+- `package.nls.json` / `package.nls.zh-cn.json`：命令、设置、视图名称随显示语言切换。
+- 英文版 README（`README.en.md`）与英文界面截图。
+- 英文模式下系统提示词切换为英文，AI 回复使用英文；结构化标记（【问题】等）保持不变以保证解析稳定。
+- 规则包、项目约定、风格提醒、CodeLens、行内对话、诊断提示均支持英文。
+- 新增 6 个 i18n 单元测试（字典完整性、语言解析、清单占位符一致性）。
+
+### Changed
+
+- 空对话提示从 CSS `:empty::before` 改为真实元素，语言切换时能即时刷新。
+- 快捷按钮增加渲染签名缓存，音量/缩放等设置推送不再重建按钮。
+- 宿主侧人设拼装去重，行内对话与侧边栏共用同一个系统提示词。
+- 首次渲染的 HTML 直接按当前语言输出，英文用户不会先看到一帧中文。
+
+### Removed
+
+- 删除未使用的 `ChatView.addAssistant` / `setPending`，以及 manifest 里重复的初始快捷按钮。
+
 ## [0.1.0] - 2026-10-24
 
 ### Added

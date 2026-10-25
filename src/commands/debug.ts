@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
@@ -32,14 +33,14 @@ export function registerDebugCommands(host: PetHost): vscode.Disposable[] {
 async function explainDiagnostic(host: PetHost, line?: number): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开出错的文件，再用这个命令。', { action: 'think' });
+    host.say(L('先打开出错的文件，再用这个命令。', `Open the file with the error first, then run this command.`), { action: 'think' });
     return;
   }
 
   const targetLine = line ?? editor.selection.active.line + 1;
   const picked = pickDiagnostics(editor.document, targetLine);
   if (!picked.length) {
-    host.say(`第 ${targetLine} 行附近没有诊断信息。`, { action: 'think' });
+    host.say(L(`第 ${targetLine} 行附近没有诊断信息。`, `No diagnostics near line ${targetLine}.`), { action: 'think' });
     return;
   }
 
@@ -56,14 +57,14 @@ async function explainDiagnostic(host: PetHost, line?: number): Promise<void> {
 async function fixDiagnostic(host: PetHost, line?: number): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开出错的文件，再用这个命令。', { action: 'think' });
+    host.say(L('先打开出错的文件，再用这个命令。', `Open the file with the error first, then run this command.`), { action: 'think' });
     return;
   }
 
   const targetLine = line ?? editor.selection.active.line + 1;
   const picked = pickDiagnostics(editor.document, targetLine);
   if (!picked.length) {
-    host.say(`第 ${targetLine} 行附近没有诊断信息。`, { action: 'think' });
+    host.say(L(`第 ${targetLine} 行附近没有诊断信息。`, `No diagnostics near line ${targetLine}.`), { action: 'think' });
     return;
   }
 
@@ -95,7 +96,7 @@ async function fixDiagnostic(host: PetHost, line?: number): Promise<void> {
 async function analyzeClipboard(host: PetHost): Promise<void> {
   const text = await vscode.env.clipboard.readText();
   if (!text.trim()) {
-    host.say('剪贴板是空的。先把报错日志或堆栈复制过来吧。', { action: 'think' });
+    host.say(L('剪贴板是空的。先把报错日志或堆栈复制过来吧。', `The clipboard is empty. Copy an error log or stack trace first.`), { action: 'think' });
     return;
   }
   await analyzeText(host, text, '剪贴板');
@@ -104,7 +105,7 @@ async function analyzeClipboard(host: PetHost): Promise<void> {
 async function analyzeLastFailure(host: PetHost): Promise<void> {
   const failure = getLastFailure();
   if (!failure) {
-    host.say('最近没有捕获到失败的命令输出。也可以直接复制报错，用「分析剪贴板里的报错」。', {
+    host.say(L('最近没有捕获到失败的命令输出。也可以直接复制报错，用「分析剪贴板里的报错」。', `No failed command output was captured recently. You can also copy the error and use “Analyze clipboard error”.`), {
       action: 'think',
     });
     return;
@@ -152,7 +153,7 @@ async function runFailureFlow(host: PetHost, failure: ParsedFailure, sourceLabel
       const range = await enclosingRange(primaryDoc, Math.max(0, primary.line - 1));
       primarySnippet = snippetFromRange(primaryDoc, range);
       host.notice(
-        `已定位：${vscode.workspace.asRelativePath(primary.uri, false)}:${primary.line}` +
+        L(`已定位：${vscode.workspace.asRelativePath(primary.uri, false)}:${primary.line}`, `Located: ${vscode.workspace.asRelativePath(primary.uri, false)}:${primary.line}`) +
           (hits.length > 1 ? `，另有 ${hits.length - 1} 处调用位置` : ''),
       );
       related = await relatedSnippets(hits.slice(1));
@@ -161,7 +162,7 @@ async function runFailureFlow(host: PetHost, failure: ParsedFailure, sourceLabel
       primarySnippet = undefined;
     }
   } else {
-    host.notice('堆栈里没有定位到工作区内的文件，这次只做解释，不会自动改代码。', 'warn');
+    host.notice(L('堆栈里没有定位到工作区内的文件，这次只做解释，不会自动改代码。', `No workspace file was located in the stack trace, so this will only explain — no code changes.`), 'warn');
   }
 
   const reply = await host.prompt(
@@ -240,12 +241,12 @@ async function resolveFrame(file: string, line: number, root: string | undefined
 async function reviewFile(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要体检的文件。', { action: 'think' });
+    host.say(L('先打开要体检的文件。', `Open the file to review first.`), { action: 'think' });
     return;
   }
   const document = editor.document;
   if (document.getText().length > 60_000) {
-    host.say('这个文件太大了，先选中要检查的片段再试。', { action: 'think' });
+    host.say(L('这个文件太大了，先选中要检查的片段再试。', `This file is too large. Select the part to check first.`), { action: 'think' });
     return;
   }
 

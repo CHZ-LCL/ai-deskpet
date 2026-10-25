@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
@@ -16,12 +17,12 @@ async function undoLast(host: PetHost): Promise<void> {
   const history = getFixHistory();
   const latest = history?.list()[0];
   if (!history || !latest) {
-    host.say('还没有可以回退的 AI 修改。', { action: 'think' });
+    host.say(L('还没有可以回退的 AI 修改。', `There are no AI edits to undo yet.`), { action: 'think' });
     return;
   }
 
   if (await restoreFix(history, latest.id)) {
-    host.say('已经回到修改前的版本。', { action: 'shy' });
+    host.say(L('已经回到修改前的版本。', `Restored the version before the edit.`), { action: 'shy' });
   }
 }
 
@@ -30,7 +31,7 @@ async function showHistory(host: PetHost): Promise<void> {
   const history = getFixHistory();
   const items = history?.list() ?? [];
   if (!history || !items.length) {
-    host.say('修改历史是空的。做过 AI 修复后这里会自动记录。', { action: 'think' });
+    host.say(L('修改历史是空的。做过 AI 修复后这里会自动记录。', `Edit history is empty. AI fixes are recorded here automatically.`), { action: 'think' });
     return;
   }
 
@@ -57,7 +58,7 @@ async function showHistory(host: PetHost): Promise<void> {
   );
   if (choice === '回退') {
     if (await restoreFix(history, picked.id)) {
-      host.say('已回退。', { action: 'shy' });
+      host.say(L('已回退。', `Undone.`), { action: 'shy' });
     }
   } else if (choice === '查看差异') {
     await showFixDiff(history, picked.id);

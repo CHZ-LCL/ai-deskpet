@@ -115,6 +115,7 @@
         volume: 0.6,
         tts: false,
         ttsRate: 1,
+        language: 'zh',
         assets: { sounds: {}, builtinImageUri: '../assets/default/pet.png' },
         aiProviderLabel: 'Ollama · qwen2.5-coder:14b',
         aiModel: 'qwen2.5-coder:14b',
@@ -166,6 +167,29 @@
 
     window.addEventListener('load', () => {
       const params = new URLSearchParams(location.search);
+      const en = params.get('lang') === 'en';
+      if (en) {
+        init.config.language = 'en';
+        init.config.quickActions = [
+          { label: 'Explain', command: 'deskpet.explainSelection' },
+          { label: 'Teach me', command: 'deskpet.teachSelection' },
+          { label: 'Fix it', command: 'deskpet.fixSelection' },
+          { label: 'Add tests', command: 'deskpet.addTests' },
+          { label: 'Add docs', command: 'deskpet.generateDocs' },
+          { label: 'Docs', text: '__docs__' },
+        ];
+        init.config.contextLabel = '128 files · 356 chunks';
+        init.history = [
+          { id: 'h1', role: 'user', content: 'Why does this fetch never time out?', at: Date.now() },
+          {
+            id: 'h2',
+            role: 'assistant',
+            content:
+              'Because the request has no timeout signal — if the network stalls, it waits forever.\n\n```ts\nawait fetch(url, {\n  signal: AbortSignal.timeout(5000),\n});\n```\n\nAfter 5 seconds it throws `TimeoutError`, so remember to `catch` it.',
+            at: Date.now(),
+          },
+        ];
+      }
       if (params.has('empty')) {
         init.history = [];
       }
@@ -181,14 +205,22 @@
               type: 'advice',
               advice: {
                 id: 'advice-1',
-                title: '修复建议',
+                title: en ? 'Suggested fix' : '修复建议',
                 file: 'src/net/fetch.ts',
                 startLine: 18,
                 endLine: 24,
-                problem: '请求没有超时控制，网络挂起时 Promise 永远不会结束。',
-                cause: 'fetch 默认没有超时，浏览器层的 TCP 重试可能持续数十秒。',
-                plan: '1. 用 AbortSignal.timeout 加 5 秒超时\n2. 捕获 TimeoutError 并转成业务错误',
-                impact: '调用方需要处理新的超时异常；正常路径行为不变。',
+                problem: en
+                  ? 'The request has no timeout, so a stalled network keeps the promise pending forever.'
+                  : '请求没有超时控制，网络挂起时 Promise 永远不会结束。',
+                cause: en
+                  ? 'fetch has no default timeout; TCP retries can last tens of seconds.'
+                  : 'fetch 默认没有超时，浏览器层的 TCP 重试可能持续数十秒。',
+                plan: en
+                  ? '1. Add a 5s timeout with AbortSignal.timeout\n2. Catch TimeoutError and convert it to a domain error'
+                  : '1. 用 AbortSignal.timeout 加 5 秒超时\n2. 捕获 TimeoutError 并转成业务错误',
+                impact: en
+                  ? 'Callers must handle the new timeout error; the happy path is unchanged.'
+                  : '调用方需要处理新的超时异常；正常路径行为不变。',
               },
             },
             '*',
@@ -197,8 +229,10 @@
             {
               type: 'nudge',
               quiet: true,
-              text: '这个文件有 3 处类型错误，需要我看一下吗？',
-              actions: [{ label: '帮我修' }, { label: '讲透这段' }],
+              text: en
+                ? 'This file has 3 type errors. Want me to take a look?'
+                : '这个文件有 3 处类型错误，需要我看一下吗？',
+              actions: en ? [{ label: 'Fix it' }, { label: 'Teach me' }] : [{ label: '帮我修' }, { label: '讲透这段' }],
             },
             '*',
           );
@@ -208,12 +242,14 @@
         window.postMessage(
           {
             type: 'say',
-            text: '这段代码我看过了，超时没加，网络一抖就会卡死。要我直接改吗？',
+            text: en
+              ? 'I looked at this code — there is no timeout, so a shaky network can hang it. Want me to fix it?'
+              : '这段代码我看过了，超时没加，网络一抖就会卡死。要我直接改吗？',
             action: 'happy',
             ttl: 0,
             actions: [
-              { label: '帮我改', command: 'deskpet.fixSelection' },
-              { label: '先解释一下' },
+              { label: en ? 'Fix it' : '帮我改', command: 'deskpet.fixSelection' },
+              { label: en ? 'Explain first' : '先解释一下' },
             ],
           },
           '*',
@@ -231,12 +267,12 @@
             {
               type: 'standards',
               packs: [
-                { id: 'js-modern', label: 'JS/TS 现代语法', description: 'var→const/let、===、includes、模板字符串', enabled: true },
-                { id: 'ts-strict', label: 'TypeScript 严格模式', description: '少用 any、@ts-expect-error 必须写原因', enabled: false },
-                { id: 'react', label: 'React 最佳实践', description: 'key、依赖数组、dangerouslySetInnerHTML', enabled: false },
-                { id: 'python-modern', label: 'Python 现代写法', description: 'f-string、enumerate、with open', enabled: false },
-                { id: 'security', label: '安全基线', description: 'eval、innerHTML、硬编码密钥、SQL 拼接', enabled: true },
-                { id: 'consistency', label: '风格一致性', description: '按项目现有缩进、引号、分号生成', enabled: true },
+                { id: 'js-modern', label: 'JS/TS 现代语法', labelEn: 'Modern JS/TS syntax', description: 'var→const/let、===、includes、模板字符串', descriptionEn: 'var→const/let, ===, includes, template literals', enabled: true },
+                { id: 'ts-strict', label: 'TypeScript 严格模式', labelEn: 'Strict TypeScript', description: '少用 any、@ts-expect-error 必须写原因', descriptionEn: 'Avoid any; explain @ts-expect-error', enabled: false },
+                { id: 'react', label: 'React 最佳实践', labelEn: 'React best practices', description: 'key、依赖数组、dangerouslySetInnerHTML', descriptionEn: 'keys, dependency arrays, dangerouslySetInnerHTML', enabled: false },
+                { id: 'python-modern', label: 'Python 现代写法', labelEn: 'Modern Python', description: 'f-string、enumerate、with open', descriptionEn: 'f-strings, enumerate, with open', enabled: false },
+                { id: 'security', label: '安全基线', labelEn: 'Security baseline', description: 'eval、innerHTML、硬编码密钥、SQL 拼接', descriptionEn: 'eval, innerHTML, hardcoded secrets, SQL concatenation', enabled: true },
+                { id: 'consistency', label: '风格一致性', labelEn: 'Style consistency', description: '按项目现有缩进、引号、分号生成', descriptionEn: 'Follow existing indentation, quotes, semicolons', enabled: true },
               ],
               conventions: [
                 '- 语言分布：ts 97%，css 3%',

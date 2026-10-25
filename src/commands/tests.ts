@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import * as vscode from 'vscode';
 import { CMD } from '../../shared/protocol';
 import { testsPrompt } from '../ai/prompts';
@@ -19,7 +20,7 @@ export function registerTestCommands(host: PetHost): vscode.Disposable[] {
 async function generateTests(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    host.say('先打开要测试的文件。', { action: 'think' });
+    host.say(L('先打开要测试的文件。', `Open the file to test first.`), { action: 'think' });
     return;
   }
   const document = editor.document;
@@ -30,7 +31,7 @@ async function generateTests(host: PetHost): Promise<void> {
   const snippet = snippetFromRange(document, range);
 
   if (snippet.code.trim().length < 20) {
-    host.say('选中一个函数或一段有逻辑的代码，我才能写测试。', { action: 'think' });
+    host.say(L('选中一个函数或一段有逻辑的代码，我才能写测试。', `Select a function or a chunk of logic so I can write tests.`), { action: 'think' });
     return;
   }
 
@@ -58,7 +59,7 @@ async function generateTests(host: PetHost): Promise<void> {
 
   const { code } = extractCode(reply);
   if (!code.trim()) {
-    host.say('模型没有给出测试代码，再说一次试试？', { action: 'alert' });
+    host.say(L('模型没有给出测试代码，再说一次试试？', `The model did not return test code. Try asking again?`), { action: 'alert' });
     return;
   }
 
@@ -113,7 +114,7 @@ async function generateTests(host: PetHost): Promise<void> {
       await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(target), {
         preview: false,
       });
-      host.say(`测试写好了：${suggested}`, { action: 'happy' });
+      host.say(L(`测试写好了：${suggested}`, `Tests are ready: ${suggested}`), { action: 'happy' });
     } catch (error) {
       void vscode.window.showErrorMessage(
         `创建测试文件失败：${error instanceof Error ? error.message : String(error)}`,

@@ -11,6 +11,8 @@ export type SoundSlot = 'click' | 'happy' | 'alert' | 'error' | 'switch';
 
 export type PetTone = 'warm' | 'sharp' | 'concise' | 'chuuni';
 export type ReplyLength = 'short' | 'normal' | 'detailed';
+/** 面板与 AI 回复的语言：跟随 VS Code、强制中文或强制英文 */
+export type PetLanguage = 'zh' | 'en';
 
 export type ThemeId =
   | 'auto'
@@ -29,20 +31,21 @@ export type Density = 'compact' | 'cozy' | 'comfortable';
 export interface ThemePreset {
   id: ThemeId;
   label: string;
+  labelEn: string;
   accent: string;
   warm: string;
   glow: number;
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: 'auto', label: '跟随 VS Code', accent: '', warm: '#ffb27a', glow: 0.55 },
-  { id: 'mint', label: '薄荷', accent: '#4ec9b0', warm: '#ffb27a', glow: 0.55 },
-  { id: 'sakura', label: '樱', accent: '#ff9db3', warm: '#ffd08a', glow: 0.5 },
-  { id: 'cyber', label: '霓虹', accent: '#7c5cff', warm: '#22d3ee', glow: 0.7 },
-  { id: 'mono', label: '极简', accent: '#c8c8c8', warm: '#9aa0a6', glow: 0.25 },
-  { id: 'amber', label: '琥珀', accent: '#f0a35e', warm: '#ffd166', glow: 0.5 },
-  { id: 'ocean', label: '深海', accent: '#3fa7ff', warm: '#6ee7d8', glow: 0.6 },
-  { id: 'custom', label: '自定义', accent: '#4ec9b0', warm: '#ffb27a', glow: 0.55 },
+  { id: 'auto', label: '跟随 VS Code', labelEn: 'Follow VS Code', accent: '', warm: '#ffb27a', glow: 0.55 },
+  { id: 'mint', label: '薄荷', labelEn: 'Mint', accent: '#4ec9b0', warm: '#ffb27a', glow: 0.55 },
+  { id: 'sakura', label: '樱', labelEn: 'Sakura', accent: '#ff9db3', warm: '#ffd08a', glow: 0.5 },
+  { id: 'cyber', label: '霓虹', labelEn: 'Neon', accent: '#7c5cff', warm: '#22d3ee', glow: 0.7 },
+  { id: 'mono', label: '极简', labelEn: 'Mono', accent: '#c8c8c8', warm: '#9aa0a6', glow: 0.25 },
+  { id: 'amber', label: '琥珀', labelEn: 'Amber', accent: '#f0a35e', warm: '#ffd166', glow: 0.5 },
+  { id: 'ocean', label: '深海', labelEn: 'Ocean', accent: '#3fa7ff', warm: '#6ee7d8', glow: 0.6 },
+  { id: 'custom', label: '自定义', labelEn: 'Custom', accent: '#4ec9b0', warm: '#ffb27a', glow: 0.55 },
 ];
 
 export interface PetTheme {
@@ -70,6 +73,21 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   { label: '补文档', command: 'deskpet.generateDocs' },
   { label: '查文档', text: '__docs__' },
 ];
+
+export const DEFAULT_QUICK_ACTIONS_EN: QuickAction[] = [
+  { label: 'Explain', command: 'deskpet.explainSelection' },
+  { label: 'Teach me', command: 'deskpet.teachSelection' },
+  { label: 'Fix it', command: 'deskpet.fixSelection' },
+  { label: 'Add tests', command: 'deskpet.addTests' },
+  { label: 'Add docs', command: 'deskpet.generateDocs' },
+  { label: 'Docs', text: '__docs__' },
+];
+
+export function defaultQuickActions(language: PetLanguage): QuickAction[] {
+  return language === 'en'
+    ? DEFAULT_QUICK_ACTIONS_EN.map((action) => ({ ...action }))
+    : DEFAULT_QUICK_ACTIONS.map((action) => ({ ...action }));
+}
 
 export interface PetPersona {
   userName: string;
@@ -109,6 +127,8 @@ export interface StandardsPack {
   id: string;
   label: string;
   description: string;
+  labelEn?: string;
+  descriptionEn?: string;
   enabled: boolean;
 }
 
@@ -134,6 +154,8 @@ export interface PetConfig {
   volume: number;
   tts: boolean;
   ttsRate: number;
+  /** 面板与 AI 回复使用的语言 */
+  language: PetLanguage;
   assets: PetAssets;
   aiProviderLabel: string;
   aiModel: string;

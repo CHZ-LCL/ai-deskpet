@@ -1,3 +1,4 @@
+import { L } from '../i18n';
 import { execFile } from 'node:child_process';
 import * as crypto from 'node:crypto';
 import * as path from 'node:path';
@@ -48,7 +49,7 @@ async function explain(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const snippet = editor ? collectEditorSnippet() : undefined;
   if (!editor || !snippet) {
-    host.say('先打开一个文件、选中一段代码，我才能看呀。', { action: 'think' });
+    host.say(L('先打开一个文件、选中一段代码，我才能看呀。', `Open a file and select some code first.`), { action: 'think' });
     await focusPet();
     return;
   }
@@ -67,7 +68,7 @@ async function fix(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const snippet = editor ? collectEditorSnippet() : undefined;
   if (!editor || !snippet) {
-    host.say('把光标放到出问题的地方，或选中一段代码，我来修。', { action: 'think' });
+    host.say(L('把光标放到出问题的地方，或选中一段代码，我来修。', `Put the cursor on the problem, or select some code, and I'll fix it.`), { action: 'think' });
     await focusPet();
     return;
   }
@@ -91,7 +92,7 @@ async function refactor(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const snippet = editor ? collectEditorSnippet() : undefined;
   if (!editor || !snippet) {
-    host.say('选中要重构的代码，我帮你收拾整齐。', { action: 'think' });
+    host.say(L('选中要重构的代码，我帮你收拾整齐。', `Select the code to refactor and I’ll tidy it up.`), { action: 'think' });
     await focusPet();
     return;
   }
@@ -118,7 +119,7 @@ async function teach(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const snippet = editor ? collectEditorSnippet() : undefined;
   if (!editor || !snippet) {
-    host.say('选中一段代码，我按“逐行 / 逻辑 / 设计”给你讲透。', { action: 'think' });
+    host.say(L('选中一段代码，我按“逐行 / 逻辑 / 设计”给你讲透。', `Select some code and I’ll teach it line by line, by logic, or by design.`), { action: 'think' });
     await focusPet();
     return;
   }
@@ -284,7 +285,7 @@ export function bindAdviceActions(host: PetHost): void {
       // 用户看建议的这段时间里文件可能被改过，范围失效就拒绝应用
       if (isPatchStale(document.getText(item.range), item.originalText)) {
         host.resolveAdvice(id, action, false);
-        host.notice('文件在你确认前发生了变化，请重新生成建议再应用。', 'warn');
+        host.notice(L('文件在你确认前发生了变化，请重新生成建议再应用。', `The file changed before you confirmed. Regenerate the suggestion before applying.`), 'warn');
         return;
       }
       const edit = new vscode.WorkspaceEdit();
@@ -294,7 +295,7 @@ export function bindAdviceActions(host: PetHost): void {
       const ok = await vscode.workspace.applyEdit(edit);
       if (!ok) {
         host.resolveAdvice(id, action, false);
-        host.notice('替换没有成功，文件可能已经变化，请重新生成建议。', 'warn');
+        host.notice(L('替换没有成功，文件可能已经变化，请重新生成建议。', `The replacement failed — the file may have changed. Please regenerate the suggestion.`), 'warn');
         return;
       }
       const afterText = document.getText();
@@ -306,7 +307,7 @@ export function bindAdviceActions(host: PetHost): void {
       }
       pendingAdvice.delete(id);
       host.resolveAdvice(id, action, true);
-      host.say('已经按说明改好了，跑一下验证吧。', { action: 'happy' });
+      host.say(L('已经按说明改好了，跑一下验证吧。', `Applied the change as described — go ahead and verify it.`), { action: 'happy' });
       void verifyAfterEdit(host, document, baseline, meta);
       return;
     }
@@ -345,7 +346,7 @@ interface GitAPI {
 async function commitMessage(host: PetHost): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    host.say('没有打开工作区，找不到 Git 仓库。', { action: 'alert' });
+    host.say(L('没有打开工作区，找不到 Git 仓库。', `No workspace is open, so I can’t find a Git repository.`), { action: 'alert' });
     return;
   }
   const cwd = folder.uri.fsPath;
@@ -357,11 +358,11 @@ async function commitMessage(host: PetHost): Promise<void> {
       diff = (await execFileAsync('git', ['--no-pager', 'diff'], { cwd, maxBuffer: 8 * 1024 * 1024 })).stdout;
     }
   } catch (error) {
-    host.say('读不到 git diff，确认这个目录是 Git 仓库。', { action: 'alert' });
+    host.say(L('读不到 git diff，确认这个目录是 Git 仓库。', `Could not read git diff. Make sure this directory is a Git repository.`), { action: 'alert' });
     return;
   }
   if (!diff.trim()) {
-    host.say('暂存区和工作区都没有改动，先写点代码吧。', { action: 'think' });
+    host.say(L('暂存区和工作区都没有改动，先写点代码吧。', `Nothing staged or modified yet — write some code first.`), { action: 'think' });
     return;
   }
 

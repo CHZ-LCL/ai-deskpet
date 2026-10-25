@@ -1,4 +1,5 @@
 import { escapeHtml } from '../util';
+import { L } from '../i18n';
 
 /**
  * 极简 Markdown 渲染：只支持对话里真正会出现的语法。
@@ -23,7 +24,7 @@ export function renderMarkdown(source: string): string {
 
 function codeBlock(code: string, lang: string): string {
   const encoded = encodeURIComponent(code);
-  return `<div class="code-block"><div class="code-head"><span class="code-lang">${escapeHtml(lang || 'text')}</span><button class="copy-btn" data-code="${encoded}" title="复制代码">复制</button></div><pre><code>${escapeHtml(code)}</code></pre></div>`;
+  return `<div class="code-block"><div class="code-head"><span class="code-lang">${escapeHtml(lang || 'text')}</span><button class="copy-btn" data-code="${encoded}" title="${L('复制代码')}">${L('复制')}</button></div><pre><code>${escapeHtml(code)}</code></pre></div>`;
 }
 
 function renderBlocks(text: string): string {
