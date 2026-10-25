@@ -54,6 +54,10 @@ const CLICK_LINES_EN = [
 
 const CODE_HINT = /(代码|函数|报错|错误|异常|这个|这段|这里|上面|文件|变量|类|接口|实现|测试|优化|重构|解释|修复|写个|写一|怎么|为什么|bug|error|code|function|api|type|import|traceback|exception)/i;
 
+/** 英文界面下所有任务提示词仍是中文，这里再加一道语言约束，保证回复是英文。 */
+const ENGLISH_DIRECTIVE =
+  '\n\n[Language] Write the answer in English. Keep any required structured markers (for example 【问题】 / 【原因】 / 【方案】 / 【影响】) exactly as given.';
+
 export interface SayOptions {
   action?: PetAction;
   ttl?: number;
@@ -340,7 +344,9 @@ export class PetHost implements vscode.Disposable {
       { role: 'system', content: system },
       {
         role: 'user',
-        content: bundle ? `${request}\n\n[项目上下文 · 自动检索]\n${bundle}` : request,
+        content:
+          (bundle ? `${request}\n\n[项目上下文 · 自动检索]\n${bundle}` : request) +
+          (isEnglish() ? ENGLISH_DIRECTIVE : ''),
       },
     ];
 
@@ -403,6 +409,9 @@ export class PetHost implements vscode.Disposable {
         if (projectBlock) {
           request = `${options.request}\n\n[项目上下文 · 本地索引自动检索，可能不完整]\n${projectBlock}`;
         }
+      }
+      if (isEnglish()) {
+        request += ENGLISH_DIRECTIVE;
       }
       turns.push({ role: 'user', content: request });
 
