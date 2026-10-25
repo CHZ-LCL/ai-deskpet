@@ -789,29 +789,29 @@ npm run package     # 类型检查 + 生产构建 + 生成 vsix
 
 发布到 VS Code Marketplace：
 
-1. 改 `package.json` 的 `name` / `publisher` / `displayName`（现在 publisher 已经是 `git-gud-ai`，换账号时再改）。
-2. 把 `package.json` 里的 `repository` / `homepage` / `bugs` 和本 README 里的仓库地址换成你的。
-3. 在 Azure DevOps 创建 Personal Access Token（Marketplace → Manage 权限）。
-4. 登录并发布：
+1. 用 Microsoft 账号登录 <https://marketplace.visualstudio.com/manage/publishers/>，创建 publisher `git-gud-ai`（必须与 `package.json` 的 `publisher` 一致）。
+2. 在 Azure DevOps 创建 Personal Access Token，勾选 **Marketplace → Manage** 权限。
+3. 登录并发布：
 
 ```bash
-npx vsce login <publisher>
-npx vsce publish
+npx vsce login git-gud-ai
+npx vsce publish --no-dependencies
 ```
 
-GitHub 仓库：
+> **关于代码签名**：VS Code Marketplace 在发布时会自动为扩展签名，VS Code 安装时验证该签名；
+> 公开发布**不需要**自己购买代码签名证书。只有私有 Marketplace 或企业自签名分发才需要
+> 可信证书 + `vsce generate-manifest` / `--sign-tool`，自签名证书不会被公开 Marketplace 接受。
+
+GitHub 仓库：<https://github.com/CHZ-LCL/ai-deskpet>（已初始化，`main` 分支）
 
 ```bash
-git init
-git add .
-git commit -m "feat: initial release"
-git branch -M main
-git remote add origin https://github.com/CHZ-LCL/ai-deskpet.git
+git remote add origin git@github.com:CHZ-LCL/ai-deskpet.git
 git push -u origin main
 ```
 
-`.github/workflows/ci.yml` 会在每次 push / PR 时做类型检查、构建并产出 vsix；
-打 tag（如 `v0.1.0`）时 `release.yml` 会自动创建 GitHub Release 并附上 vsix。
+`.github/workflows/ci.yml` 会在每次 push / PR 时做类型检查、单元测试、构建并产出 vsix；
+推 `v*` tag 时会自动创建 GitHub Release 并附上 vsix。若在仓库 Secrets 里配置
+`VSCE_PAT`，tag 构建还会自动执行 `vsce publish`。
 
 > 注意：**不要把 `live2dcubismcore.min.js` 或任何 Live2D 官方示例模型提交到仓库**，
 > 它们的许可不允许再分发。仓库里也不要放没有授权的角色素材。

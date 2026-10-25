@@ -425,14 +425,17 @@ npm run package   # typecheck + production build + vsix
 
 Before publishing:
 
-1. Replace `name` / `publisher` / `displayName` in `package.json` if you publish under a different account (the publisher is already `git-gud-ai`).
-2. Update `repository` / `homepage` / `bugs` and the clone URLs in both READMEs.
-3. Create an Azure DevOps PAT with Marketplace → Manage, then:
+1. Sign in to <https://marketplace.visualstudio.com/manage/publishers/> with a Microsoft account and create the publisher `git-gud-ai` (must match `package.json`).
+2. Create an Azure DevOps PAT with **Marketplace → Manage** and run:
 
 ```bash
-npx vsce login <publisher>
-npx vsce publish
+npx vsce login git-gud-ai
+npx vsce publish --no-dependencies
 ```
+
+> **Code signing:** the VS Code Marketplace signs every extension at publish time and VS Code verifies that signature on install. You do **not** need to buy a code-signing certificate for a public listing. Custom trusted signing (`.signature.p7s` via `vsce generate-manifest` / `--sign-tool`) is only for private marketplaces or publisher signing; self-signed certificates are rejected by the public Marketplace.
+
+Repository: <https://github.com/CHZ-LCL/ai-deskpet>. The CI workflow type-checks, runs unit tests, builds, and packages a VSIX on every push; pushing a `v*` tag creates a GitHub Release with the VSIX, and publishes to the Marketplace automatically when the `VSCE_PAT` secret is configured.
 
 > Do **not** commit `live2dcubismcore.min.js` or any official Live2D sample model; their licenses do not allow redistribution.
 
