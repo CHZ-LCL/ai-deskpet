@@ -36,6 +36,13 @@ export interface ProblemItem {
   source?: string;
 }
 
+export interface StandardsPack {
+  id: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+}
+
 export interface PetAssets {
   /** 单张图片形象的 url */
   imageUri?: string;
@@ -146,6 +153,13 @@ export type HostMessage =
   | { type: 'advice'; advice: AdviceCard }
   | { type: 'adviceDone'; id: string; action: AdviceAction; ok: boolean }
   | { type: 'problems'; file?: string; items: ProblemItem[] }
+  | {
+      type: 'standards';
+      packs: StandardsPack[];
+      conventions: string[];
+      customCount: number;
+      whitelistCount: number;
+    }
   | { type: 'openChat'; draft?: string };
 
 /** webview -> 宿主 */
@@ -172,6 +186,8 @@ export const CMD = {
   analyzeFailure: 'deskpet.analyzeFailure',
   analyzeClipboard: 'deskpet.analyzeClipboard',
   reviewFile: 'deskpet.reviewFile',
+  reviewRules: 'deskpet.reviewRules',
+  modernize: 'deskpet.modernize',
   fix: 'deskpet.fixSelection',
   refactor: 'deskpet.refactorSelection',
   tests: 'deskpet.addTests',

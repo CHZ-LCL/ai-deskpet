@@ -879,6 +879,78 @@ button {
   line-height: 1.9;
 }
 
+/* ---------------------------------------------------------------- 规范 */
+
+.standards-section {
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 10.2px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.convention-list {
+  margin: 0;
+  padding-left: 1.1em;
+  font-size: 11.2px;
+  line-height: 1.8;
+}
+
+.convention-list li::marker {
+  color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.pack-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pack-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  cursor: pointer;
+}
+
+.pack-row input {
+  margin: 3px 0 0;
+  accent-color: var(--accent);
+}
+
+.pack-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pack-text b {
+  font-size: 11.4px;
+  font-weight: 600;
+}
+
+.pack-text em {
+  font-style: normal;
+  font-size: 10.2px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.standards-meta {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0;
+  font-size: 10.4px;
+  color: var(--muted);
+}
+
 .link-btn {
   border: none;
   background: transparent;

@@ -40,6 +40,7 @@
         <div class="toolbar-right">
           <button class="icon-btn" id="btn-gallery" title="形象库">◍</button>
           <button class="icon-btn" id="btn-sound" title="音效库">♪</button>
+          <button class="icon-btn" id="btn-standards" title="代码规范">§</button>
           <button class="icon-btn" id="btn-settings" title="设置">⚙</button>
           <button class="icon-btn" id="btn-open-panel" title="在编辑器标签中打开">⤢</button>
         </div>
@@ -194,6 +195,35 @@
       }, 400);
       if (params.has('settings')) {
         setTimeout(() => document.getElementById('btn-settings')?.click(), 700);
+      }
+      if (params.has('standards')) {
+        setTimeout(() => {
+          window.postMessage(
+            {
+              type: 'standards',
+              packs: [
+                { id: 'js-modern', label: 'JS/TS 现代语法', description: 'var→const/let、===、includes、模板字符串', enabled: true },
+                { id: 'ts-strict', label: 'TypeScript 严格模式', description: '少用 any、@ts-expect-error 必须写原因', enabled: false },
+                { id: 'react', label: 'React 最佳实践', description: 'key、依赖数组、dangerouslySetInnerHTML', enabled: false },
+                { id: 'python-modern', label: 'Python 现代写法', description: 'f-string、enumerate、with open', enabled: false },
+                { id: 'security', label: '安全基线', description: 'eval、innerHTML、硬编码密钥、SQL 拼接', enabled: true },
+                { id: 'consistency', label: '风格一致性', description: '按项目现有缩进、引号、分号生成', enabled: true },
+              ],
+              conventions: [
+                '- 语言分布：ts 97%，css 3%',
+                '- 文件名：camelCase 为主',
+                '- 缩进：2 空格',
+                '- 引号：以单引号为主',
+                '- 语句结尾：带分号',
+                '- 测试文件：*.test.ts',
+              ],
+              customCount: 2,
+              whitelistCount: 1,
+            },
+            '*',
+          );
+          document.getElementById('btn-standards')?.click();
+        }, 500);
       }
       if (params.has('problems') || params.has('chip')) {
         setTimeout(() => {

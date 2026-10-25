@@ -298,6 +298,67 @@ ollama pull qwen2.5-coder:14b
 
 ---
 
+## 规范驱动与重构
+
+规则不是写在文档里给人看的，而是**每次生成都会进系统提示词**，同时有一套本地扫描器做事实核查。
+
+![代码规范](docs/standards.png)
+
+### 六个内置规则包
+
+| 规则包 | 管什么 |
+| --- | --- |
+| JS/TS 现代语法 | var→const/let、`===`、includes、模板字符串、展开语法、async/await |
+| TypeScript 严格模式 | 少用 `any`、`@ts-expect-error` 必须写原因、优先联合类型 |
+| React 最佳实践 | key、依赖数组、`dangerouslySetInnerHTML` |
+| Python 现代写法 | f-string、enumerate、`with open`、避免裸 except / 可变默认参数 |
+| 安全基线 | eval、innerHTML、命令注入、硬编码密钥、明文 HTTP、SQL 拼接 |
+| 风格一致性 | 按项目现有缩进、引号、分号、命名生成代码 |
+
+在 **§ 代码规范** 面板里勾选启用；默认开启 `js-modern`、`security`、`consistency`。
+
+### 风格一致性怎么保证
+
+1. 索引时会统计项目的缩进宽度、引号、分号、文件命名、测试文件命名。
+2. 生成补丁前，再用**目标文件本身**推断一次风格（比全局统计更贴近当前文件）。
+3. 生成后做一次确定性校验：如果模型用了双引号而项目是单引号、或漏了分号，
+   会在变更卡片的【影响】里追加一行 **风格提醒**，不会偷偷改你的代码。
+4. 想强制统一风格，可显式设置 `deskpet.style.indent` / `quotes` / `semicolons`。
+
+### 自定义规则与白名单
+
+```jsonc
+{
+  "deskpet.standards.custom": [
+    {
+      "id": "no-console",
+      "title": "禁止提交 console.log",
+      "severity": "medium",
+      "guidance": "调试输出一律用 logger.debug，并且不要带用户数据"
+    }
+  ],
+  "deskpet.standards.whitelist": [
+    { "rule": "security.eval", "glob": "**/test/**", "reason": "测试夹具需要动态执行" },
+    { "rule": "security.secret", "glob": "**/*.example", "reason": "示例配置里的占位值" }
+  ]
+}
+```
+
+- `rule` 支持 `security.*` 这样的前缀，`glob` 支持 `**` / `*` / `?`。
+- 命中白名单的规则**既不会在扫描结果里出现，也不会让模型去“修复”它**——这句会明确写进提示词。
+
+### 两个命令
+
+| 命令 | 做什么 |
+| --- | --- |
+| 按团队规范检查当前文件 | 本地扫描（行号 + 规则 + 建议）→ 模型判断哪些值得改 → 只给一个补丁 + 自动 diff |
+| 现代化重构选中代码 | 以“更现代 / 更简洁 / 性能更好”为目标重构选区，附上扫描线索 |
+
+扫描是确定性的（快、可解释、不花 token），模型只负责判断优先级和写补丁，避免“为了清零规则而改坏代码”。
+每条结果都带 `L行号` 和规则 id，卡片里能看到改与不改的理由。
+
+---
+
 ## 设置项
 
 | 设置 | 默认值 | 说明 |
@@ -328,6 +389,12 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.context.maxChars` | `8000` | 每次提问附带的上下文预算 |
 | `deskpet.fix.autoDiff` | `true` | 从报错生成修复时自动打开并排 diff |
 | `deskpet.debug.watchTerminal` | `true` | 捕获终端失败输出（需 VS Code 1.93+） |
+| `deskpet.standards.packs` | `js-modern,security,consistency` | 启用的规则包 |
+| `deskpet.standards.custom` | `[]` | 团队自定义规则（写进提示词） |
+| `deskpet.standards.whitelist` | `[]` | 安全扫描白名单（规则 + glob） |
+| `deskpet.style.indent` | `auto` | 生成代码缩进：auto / 2 / 4 / tab |
+| `deskpet.style.quotes` | `auto` | 引号：auto / single / double |
+| `deskpet.style.semicolons` | `auto` | 分号：auto / always / never |
 
 ---
 
@@ -344,6 +411,8 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.analyzeFailure` | — | 分析最近一次失败的终端命令 |
 | `deskpet.analyzeClipboard` | — | 分析剪贴板里的报错 / 堆栈 |
 | `deskpet.reviewFile` | — | 静态体检当前文件 |
+| `deskpet.reviewRules` | — | 按团队规范检查当前文件 |
+| `deskpet.modernize` | — | 现代化重构选中代码 |
 | `deskpet.refactorSelection` | — | 按目标重构选区 |
 | `deskpet.addTests` | — | 为选区生成测试文件 |
 | `deskpet.commitMessage` | — | 根据 git diff 生成提交信息 |

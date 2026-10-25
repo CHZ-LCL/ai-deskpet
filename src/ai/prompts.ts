@@ -176,8 +176,7 @@ export interface PromptSnippet {
   code: string;
 }
 
-const EXPLAIN_FORMAT = [
-  '输出格式严格如下（某项确实没有就写“无”）：',
+const EXPLAIN_FORMAT = [  '输出格式严格如下（某项确实没有就写“无”）：',
   '【问题】用一句人话说明用户会遇到什么现象，不要复述报错原文',
   '【原因】报错到底在说什么：哪个值、哪一步不满足什么假设；如果是堆栈，指出真正的出错点（可以提“上层调用传入了 X，但这里假设它是 Y”）',
   '【方案】怎么改，最多 3 条',
@@ -240,8 +239,36 @@ export function diagnosticPrompt(
   ].join('\n');
 }
 
-export function reviewPrompt(file: string, languageId: string, code: string): string {
+export function rulesPrompt(
+  file: string,
+  languageId: string,
+  findings: string,
+  code: string,
+  scope: string,
+): string {
   return [
+    `你在按团队规范审查 ${file} 的${scope}。本地规则扫描先给出了下面这些线索（可能有误报）：`,
+    '',
+    findings,
+    '',
+    '要求：',
+    '1. 先逐条判断：真正要改 / 可以不改（说明理由）。不要为了“清零”而改坏可读性。',
+    '2. 选**最有价值的一处**给出补丁，保持行为不变；不要顺手重写无关逻辑。',
+    '3. 如果某个问题是全局性的（比如命名风格），在【影响】里说明，不要在这一处硬改。',
+    '',
+    '输出格式严格如下：',
+    '【问题】最有价值的那个问题是什么，会造成什么实际影响',
+    '【原因】为什么现有写法不好（可读性 / 性能 / 安全 / 一致性）',
+    '【方案】怎么改，最多 3 条',
+    '【影响】行为是否变化、需要同步改哪些地方',
+    '然后只输出一个代码块，替换下面这段代码：',
+    '```' + languageId,
+    code,
+    '```',
+  ].join('\n');
+}
+
+export function reviewPrompt(file: string, languageId: string, code: string): string {  return [
     `请对下面这段 ${languageId} 代码（${file}）做一次静态检修。这不是让你重写，而是找问题。`,
     '',
     '检查清单：空值与未定义、边界与越界、异常被吞/未处理、资源泄漏、并发与竞态、',

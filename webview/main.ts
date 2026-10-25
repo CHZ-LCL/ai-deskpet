@@ -9,6 +9,7 @@ import type {
   ProblemItem,
   SoundItem,
   SoundSlot,
+  StandardsPack,
   WebviewMessage,
 } from '../shared/protocol';
 import { CMD } from '../shared/protocol';
@@ -99,6 +100,12 @@ const state: {
   unread: number;
   problems: ProblemItem[];
   problemsFile?: string;
+  standards?: {
+    packs: StandardsPack[];
+    conventions: string[];
+    customCount: number;
+    whitelistCount: number;
+  };
 } = {
   assets: [],
   sounds: [],
@@ -202,6 +209,17 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
       updateProblemChip();
       if (currentDrawer === 'problems') {
         renderProblems();
+      }
+      break;
+    case 'standards':
+      state.standards = {
+        packs: message.packs,
+        conventions: message.conventions,
+        customCount: message.customCount,
+        whitelistCount: message.whitelistCount,
+      };
+      if (currentDrawer === 'standards') {
+        renderStandards();
       }
       break;
     case 'openChat':
@@ -508,9 +526,9 @@ dom.petMount.addEventListener('click', (event) => {
 
 // ------------------------------------------------------------------ 工具栏 / 抽屉
 
-let currentDrawer: 'gallery' | 'sound' | 'settings' | 'problems' | undefined;
+let currentDrawer: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards' | undefined;
 
-function openDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems'): void {
+function openDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards'): void {
   currentDrawer = kind;
   dom.drawer.hidden = false;
   renderDrawer(kind);
@@ -521,13 +539,15 @@ function closeDrawer(): void {
   dom.drawer.hidden = true;
 }
 
-function renderDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems'): void {
+function renderDrawer(kind: 'gallery' | 'sound' | 'settings' | 'problems' | 'standards'): void {
   if (kind === 'gallery') {
     renderGallery();
   } else if (kind === 'sound') {
     renderSounds();
   } else if (kind === 'problems') {
     renderProblems();
+  } else if (kind === 'standards') {
+    renderStandards();
   } else {
     renderSettings();
   }
@@ -686,6 +706,89 @@ function renderProblems(): void {
   });
 }
 
+function renderStandards(): void {
+  const standards = state.standards;
+  dom.drawerTitle.textContent = '代码规范';
+
+  const conventions = (standards?.conventions ?? []).length
+    ? (standards?.conventions ?? [])
+        .map((line) => `<li>${escapeText(line.replace(/^-\s*/, ''))}</li>`)
+        .join('')
+    : '<li>索引完成后会显示检测到的项目约定</li>';
+
+  const packs = (standards?.packs ?? [])
+    .map(
+      (pack) => `<label class="pack-row">
+        <input type="checkbox" data-pack="${escapeAttr(pack.id)}" ${pack.enabled ? 'checked' : ''}/>
+        <span class="pack-text"><b>${escapeText(pack.label)}</b><em>${escapeText(pack.description)}</em></span>
+      </label>`,
+    )
+    .join('');
+
+  dom.drawerBody.innerHTML = `
+    <div class="standards-section">
+      <div class="section-title">检测到的约定</div>
+      <ul class="convention-list">${conventions}</ul>
+    </div>
+    <div class="standards-section">
+      <div class="section-title">规则包</div>
+      <div class="pack-list">${packs || '<div class="hint">正在读取配置…</div>'}</div>
+    </div>
+    <div class="standards-meta">
+      <span>自定义规则 ${standards?.customCount ?? 0} 条</span>
+      <span>白名单 ${standards?.whitelistCount ?? 0} 条</span>
+    </div>
+    <div class="hint">规则和风格会写进每次生成的提示词；白名单里的规则不会被扫描，也不会被“修复”。</div>`;
+
+  dom.drawerFoot.innerHTML = `<div class="drawer-actions">
+    <button class="primary-btn" id="review-rules">按规范检查当前文件</button>
+    <button class="ghost-btn" id="modernize-selection">现代化重构选中代码</button>
+    <button class="ghost-btn" id="edit-standards">编辑规则与白名单</button>
+  </div>`;
+
+  dom.drawerBody.querySelectorAll<HTMLInputElement>('[data-pack]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (!state.standards) {
+        return;
+      }
+      const enabled = new Set(
+        state.standards.packs.filter((pack) => pack.enabled).map((pack) => pack.id),
+      );
+      const id = input.dataset.pack;
+      if (!id) {
+        return;
+      }
+      if (input.checked) {
+        enabled.add(id);
+      } else {
+        enabled.delete(id);
+      }
+      state.standards.packs = state.standards.packs.map((pack) => ({
+        ...pack,
+        enabled: enabled.has(pack.id),
+      }));
+      post({
+        type: 'command',
+        command: 'deskpet.updateSetting',
+        args: { key: 'standards.packs', value: [...enabled] },
+      });
+      toast(`规则包已更新，${enabled.size} 个启用`);
+    });
+  });
+
+  dom.drawerFoot.querySelector('#review-rules')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.reviewRules });
+    closeDrawer();
+  });
+  dom.drawerFoot.querySelector('#modernize-selection')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.modernize });
+    closeDrawer();
+  });
+  dom.drawerFoot.querySelector('#edit-standards')?.addEventListener('click', () => {
+    post({ type: 'command', command: 'workbench.action.openSettings', args: 'deskpet.standards' });
+  });
+}
+
 function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
   const config = state.config;
   const snapshot = state.snapshot;
@@ -805,6 +908,7 @@ function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
 
 el('btn-gallery').addEventListener('click', () => openDrawer('gallery'));
 el('btn-sound').addEventListener('click', () => openDrawer('sound'));
+el('btn-standards').addEventListener('click', () => openDrawer('standards'));
 el('btn-settings').addEventListener('click', () => openDrawer('settings'));
 dom.problemChip.addEventListener('click', () => openDrawer('problems'));
 el('btn-open-panel').addEventListener('click', () => post({ type: 'command', command: CMD.openPanel }));

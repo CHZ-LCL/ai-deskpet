@@ -113,6 +113,16 @@
         "category": "AI 桌宠"
       },
       {
+        "command": "deskpet.reviewRules",
+        "title": "按团队规范检查当前文件",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.modernize",
+        "title": "现代化重构选中代码",
+        "category": "AI 桌宠"
+      },
+      {
         "command": "deskpet.refactorSelection",
         "title": "重构选中代码",
         "category": "AI 桌宠"
@@ -433,6 +443,125 @@
           "type": "boolean",
           "default": true,
           "description": "捕获终端里失败的命令输出（需要 VS Code 1.93+ 的 Shell Integration），用于分析报错。"
+        },
+        "deskpet.standards.packs": {
+          "type": "array",
+          "default": [
+            "js-modern",
+            "security",
+            "consistency"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "js-modern",
+              "ts-strict",
+              "react",
+              "python-modern",
+              "security",
+              "consistency"
+            ]
+          },
+          "description": "启用的规范规则包。会写进每次代码生成的提示词，也用于本地扫描。"
+        },
+        "deskpet.standards.custom": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "guidance"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "规则 id，例如 no-console"
+              },
+              "title": {
+                "type": "string",
+                "description": "简短标题"
+              },
+              "guidance": {
+                "type": "string",
+                "description": "给模型的约束，写具体一些"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "default": "medium"
+              },
+              "languages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "限定语言 id，留空表示全部"
+              }
+            }
+          },
+          "description": "团队自定义规则，会写进每次代码生成的提示词。"
+        },
+        "deskpet.standards.whitelist": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "rule"
+            ],
+            "properties": {
+              "rule": {
+                "type": "string",
+                "description": "规则 id，支持 security.* 这样的前缀"
+              },
+              "glob": {
+                "type": "string",
+                "description": "文件 glob，例如 **/test/**；留空表示所有文件"
+              },
+              "reason": {
+                "type": "string",
+                "description": "豁免原因，会展示给模型"
+              }
+            }
+          },
+          "description": "安全扫描白名单：命中的规则在这些文件里不再提示，也不会让模型去“修复”。"
+        },
+        "deskpet.style.indent": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "2",
+            "4",
+            "tab"
+          ],
+          "default": "auto",
+          "description": "生成代码的缩进。auto 表示跟随当前文件。"
+        },
+        "deskpet.style.quotes": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "single",
+            "double"
+          ],
+          "default": "auto",
+          "description": "生成代码的引号风格。auto 表示跟随当前文件。"
+        },
+        "deskpet.style.semicolons": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "default": "auto",
+          "description": "生成代码是否加分号。auto 表示跟随当前文件。"
         }
       }
     }

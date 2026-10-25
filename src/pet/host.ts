@@ -11,6 +11,7 @@ import type {
   PetSnapshot,
   ProblemItem,
   SoundSlot,
+  StandardsPack,
   WebviewMessage,
 } from '../../shared/protocol';
 import { createProvider, readAiSettings } from '../ai';
@@ -20,6 +21,7 @@ import type { ChatTurn } from '../ai/types';
 import { buildPetConfig } from '../config';
 import type { ProjectContext } from '../context/project';
 import { gatherSources } from '../docs/search';
+import { PACKS, readStandardsConfig, standardsBlock } from '../standards/rules';
 import { truncate } from '../util';
 import type { AssetStore } from './assets';
 import type { PetState } from './state';
@@ -202,6 +204,23 @@ export class PetHost implements vscode.Disposable {
     this.broadcast({ type: 'problems', file, items });
   }
 
+  /** 规范面板的数据：规则包开关 + 项目约定 + 自定义/白名单数量。 */
+  standardsPayload(): { type: 'standards'; packs: StandardsPack[]; conventions: string[]; customCount: number; whitelistCount: number } {
+    const config = readStandardsConfig();
+    return {
+      type: 'standards',
+      packs: PACKS.map((pack) => ({
+        id: pack.id,
+        label: pack.label,
+        description: pack.description,
+        enabled: config.packs.includes(pack.id),
+      })),
+      conventions: this.project.getConventions(),
+      customCount: config.custom.length,
+      whitelistCount: config.whitelist.length,
+    };
+  }
+
   resolveAdvice(id: string, action: AdviceAction, ok: boolean): void {
     this.broadcast({ type: 'adviceDone', id, action, ok });
   }
@@ -224,6 +243,7 @@ export class PetHost implements vscode.Disposable {
         ]);
         this.post(webview, { type: 'config', config });
         this.post(webview, { type: 'assets', assets: items, sounds });
+        this.post(webview, this.standardsPayload());
       } catch {
         // webview 可能已经销毁，忽略
       }
@@ -287,6 +307,7 @@ export class PetHost implements vscode.Disposable {
           days: snapshot.daysTogether,
         }),
         `当前环境：${workspaceSummary()}；AI：${provider.label}。`,
+        standardsBlock(this.project.getConventions(), this.project.getStyleProfile()),
       ].join('\n\n');
 
       const turns: ChatTurn[] = [{ role: 'system', content: system }];
@@ -572,6 +593,7 @@ export class PetHost implements vscode.Disposable {
       busy: this.busy,
       busyLabel: this.busyLabel,
     });
+    this.post(webview, this.standardsPayload());
   }
 
   private post(webview: vscode.Webview, message: HostMessage): void {

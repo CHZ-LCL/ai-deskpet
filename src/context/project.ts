@@ -10,7 +10,7 @@ import {
   type Bm25Index,
   type RawChunk,
 } from './ranking';
-
+import type { StyleProfile } from '../standards/rules';
 /** 参与索引的源码/配置后缀。 */
 const SOURCE_EXTENSIONS = [
   'ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs', 'vue', 'svelte', 'astro',
@@ -57,6 +57,7 @@ export class ProjectContext implements vscode.Disposable {
   private importedBy = new Map<string, Set<string>>();
   private byBaseName = new Map<string, string[]>();
   private conventions: string[] = [];
+  private styleHints: StyleProfile = { indent: '2 空格', quotes: 'either', semicolons: 'either' };
   private status: 'idle' | 'building' | 'ready' = 'idle';
   private task?: Promise<void>;
   private readonly statusBar: vscode.StatusBarItem;
@@ -74,6 +75,14 @@ export class ProjectContext implements vscode.Disposable {
 
   get ready(): boolean {
     return this.status === 'ready';
+  }
+
+  getConventions(): string[] {
+    return [...this.conventions];
+  }
+
+  getStyleProfile(): StyleProfile {
+    return { ...this.styleHints };
   }
 
   get label(): string {
@@ -298,10 +307,6 @@ export class ProjectContext implements vscode.Disposable {
     const budget = options.maxChars ?? 8000;
     const activeRel = options.activeUri ? vscode.workspace.asRelativePath(options.activeUri, false) : undefined;
     const blocks: string[] = [];
-
-    if (this.conventions.length) {
-      blocks.push(`## 项目约定\n${this.conventions.join('\n')}`);
-    }
 
     if (activeRel && this.files.has(activeRel)) {
       const outline = await this.outline(activeRel);
@@ -559,6 +564,7 @@ export class ProjectContext implements vscode.Disposable {
     let semicolons = 0;
     let statements = 0;
     let sampled = 0;
+    const widthCounts = new Map<number, number>();
 
     for (const chunk of this.chunks) {
       if (sampled > 220) {
@@ -573,6 +579,10 @@ export class ProjectContext implements vscode.Disposable {
           tabs += 1;
         } else if (/^ {2,}/.test(line)) {
           spaces += 1;
+          const width = /^( +)\S/.exec(line)?.[1].length ?? 0;
+          if (width === 2 || width === 4) {
+            widthCounts.set(width, (widthCounts.get(width) ?? 0) + 1);
+          }
         }
         single += (line.match(/'/g) ?? []).length;
         double += (line.match(/"/g) ?? []).length;
@@ -585,15 +595,25 @@ export class ProjectContext implements vscode.Disposable {
       }
     }
 
+    const topWidth = [...widthCounts.entries()].sort((left, right) => right[1] - left[1])[0];
+    const indentText = tabs > spaces ? 'Tab' : topWidth ? `${topWidth[0]} 空格` : '2 空格';
     if (spaces || tabs) {
-      lines.push(`- 缩进：${spaces >= tabs ? '空格' : 'Tab'}`);
+      lines.push(`- 缩进：${indentText}`);
     }
-    if (single || double) {
-      lines.push(`- 引号：以${single >= double ? '单引号' : '双引号'}为主`);
+
+    const quoteStyle = single || double ? (single >= double * 1.2 ? 'single' : double >= single * 1.2 ? 'double' : 'either') : 'either';
+    if (quoteStyle !== 'either') {
+      lines.push(`- 引号：以${quoteStyle === 'single' ? '单引号' : '双引号'}为主`);
     }
+
+    let semicolonStyle: 'always' | 'never' | 'either' = 'either';
     if (statements > 20) {
-      lines.push(`- 语句结尾：${semicolons / statements > 0.6 ? '带分号' : '通常省略分号'}`);
+      const ratio = semicolons / statements;
+      semicolonStyle = ratio > 0.6 ? 'always' : ratio < 0.2 ? 'never' : 'either';
+      lines.push(`- 语句结尾：${semicolonStyle === 'always' ? '带分号' : semicolonStyle === 'never' ? '通常省略分号' : '两种写法都有'}`);
     }
+
+    this.styleHints = { indent: indentText, quotes: quoteStyle, semicolons: semicolonStyle };
 
     const frameworks = this.detectFrameworks();
     if (frameworks.length) {

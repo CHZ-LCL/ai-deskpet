@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { API_KEY_SECRET } from './ai';
 import { diffContentProvider, focusPet, registerAssistCommands, bindAdviceActions } from './commands/assist';
 import { registerDebugCommands } from './commands/debug';
+import { registerStandardsCommands } from './commands/standards';
 import { registerTerminalCapture } from './debug/terminalLog';
 import { ProjectContext } from './context/project';
 import { DOCS_KEY_SECRET } from './docs/search';
@@ -80,6 +81,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(...registerAssistCommands(host));
   context.subscriptions.push(...registerDebugCommands(host));
+  context.subscriptions.push(...registerStandardsCommands(host));
   bindAdviceActions(host);
 
   registerTerminalCapture(context, (failure) => {

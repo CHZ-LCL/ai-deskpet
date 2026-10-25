@@ -18,6 +18,7 @@ import {
   type TeachDepth,
 } from '../ai/prompts';
 import type { PetHost } from '../pet/host';
+import { checkStyle, inferStyleProfile } from '../standards/profile';
 import { extractCode, truncate } from '../util';
 
 const execFileAsync = promisify(execFile);
@@ -261,6 +262,7 @@ export async function presentPatch(
   }
 
   const id = crypto.randomUUID();
+  const styleNotes = checkStyle(parsed.code, inferStyleProfile(document.getText()));
   const card: AdviceCard = {
     id,
     title,
@@ -270,7 +272,9 @@ export async function presentPatch(
     problem: parsed.problem || '模型没有给出问题描述。',
     cause: parsed.cause,
     plan: parsed.plan,
-    impact: parsed.impact,
+    impact: [parsed.impact, styleNotes.length ? `风格提醒：${styleNotes.join('；')}` : '']
+      .filter(Boolean)
+      .join('\n'),
   };
 
   const item: PendingAdvice = {

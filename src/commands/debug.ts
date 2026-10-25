@@ -261,7 +261,7 @@ async function reviewFile(host: PetHost): Promise<void> {
 // ------------------------------------------------------------------ 工具
 
 /** 找到包含指定行的最小符号（函数/方法），控制替换范围。 */
-async function enclosingRange(document: vscode.TextDocument, line: number): Promise<vscode.Range> {
+export async function enclosingRange(document: vscode.TextDocument, line: number): Promise<vscode.Range> {
   try {
     const symbols = (await vscode.commands.executeCommand(
       'vscode.executeDocumentSymbolProvider',
