@@ -3,6 +3,7 @@ import { API_KEY_SECRET } from './ai';
 import { bindAdviceActions, diffContentProvider, focusPet, registerAssistCommands } from './commands/assist';
 import { registerDocCommands } from './commands/docs';
 import { registerTestCommands } from './commands/tests';
+import { registerThemeCommands } from './commands/theme';
 import { registerDebugCommands } from './commands/debug';
 import { registerStandardsCommands } from './commands/standards';
 import { registerInlineChat } from './inline/chat';
@@ -68,13 +69,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // 供 webview 使用的内部命令（不注册到命令面板）
   context.subscriptions.push(
-    vscode.commands.registerCommand('deskpet.updateSetting', async (args: { key: string; value: unknown }) => {
+    vscode.commands.registerCommand('deskpet.updateSetting', async (args: { key: string; value: unknown; scope?: string }) => {
       if (!args?.key) {
         return;
       }
-      await vscode.workspace
-        .getConfiguration('deskpet')
-        .update(args.key, args.value, vscode.ConfigurationTarget.Global);
+      const target =
+        args.scope === 'workspace' && vscode.workspace.workspaceFolders?.length
+          ? vscode.ConfigurationTarget.Workspace
+          : vscode.ConfigurationTarget.Global;
+      await vscode.workspace.getConfiguration('deskpet').update(args.key, args.value, target);
     }),
     vscode.commands.registerCommand('deskpet.openExternal', async (url: string) => {
       if (/^https?:\/\//i.test(url)) {
@@ -91,6 +94,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(...registerStandardsCommands(host));
   context.subscriptions.push(...registerTestCommands(host));
   context.subscriptions.push(...registerDocCommands(host));
+  context.subscriptions.push(...registerThemeCommands(host, context));
   registerInlineChat(context, host);
   registerInlineCodeLens(context);
   bindAdviceActions(host);

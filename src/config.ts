@@ -60,6 +60,10 @@ export async function buildPetConfig(
     quickActions: normalizeQuickActions(config.get<QuickAction[]>('ui.quickActions', [])),
     persona,
     greeting: greeting || undefined,
+    themeScope: {
+      hasWorkspace: Boolean(vscode.workspace.workspaceFolders?.length),
+      workspaceOverride: config.inspect('ui.theme')?.workspaceValue !== undefined,
+    },
     rendererScripts: {
       live2d: webview
         .asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview', 'renderer-live2d.js'))

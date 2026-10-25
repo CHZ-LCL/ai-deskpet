@@ -1907,6 +1907,50 @@ textarea#custom-css {
   margin-top: 2px;
 }
 
+.scope-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 10.4px;
+  color: var(--muted);
+}
+
+.scope-note button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  font-size: 10.4px;
+  text-decoration: underline;
+}
+
+.segmented button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.css-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 6px 0;
+}
+
+.chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 10.2px;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
 /* ---------------------------------------------------------------- 响应式 */
 
 @media (min-width: 620px) {

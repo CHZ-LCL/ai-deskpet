@@ -32,7 +32,7 @@ declare function acquireVsCodeApi<T = unknown>(): {
   setState(state: T): void;
 };
 
-const vscode = acquireVsCodeApi<{ greeted?: boolean }>();
+const vscode = acquireVsCodeApi<{ greeted?: boolean; scope?: 'global' | 'workspace' }>();
 
 const MOOD_LABEL: Record<PetAction, string> = {
   idle: '发呆中',
@@ -107,6 +107,7 @@ const state: {
   unread: number;
   problems: ProblemItem[];
   problemsFile?: string;
+  scope: 'global' | 'workspace';
   standards?: {
     packs: StandardsPack[];
     conventions: string[];
@@ -122,6 +123,7 @@ const state: {
   initialized: false,
   unread: 0,
   problems: [],
+  scope: vscode.getState()?.scope === 'workspace' ? 'workspace' : 'global',
 };
 
 // ------------------------------------------------------------------ 通信
@@ -382,8 +384,7 @@ function segmented(
   name: string,
   options: Array<[string, string]>,
   current: string,
-): string {
-  return `<div class="segmented" data-setting="${name}">${options
+): string {  return `<div class="segmented" data-setting="${name}">${options
     .map(
       ([value, label]) =>
         `<button data-value="${value}" class="${value === current ? 'active' : ''}">${label}</button>`,
@@ -892,6 +893,17 @@ function renderStandards(): void {
   });
 }
 
+const CSS_SNIPPETS: Array<[string, string]> = [
+  ['紧凑气泡', '.msg { border-radius: 8px; padding: 6px 9px; }'],
+  ['等宽代码', '.code-block code { font-family: var(--vscode-editor-font-family); }'],
+  ['隐藏光晕', '.stage-glow { display: none; }'],
+  ['大圆角', '.speech, .msg, .advice-card { border-radius: 18px; }'],
+];
+
+function settingScope(): 'global' | 'workspace' {
+  return state.scope === 'workspace' && state.config?.themeScope?.hasWorkspace ? 'workspace' : 'global';
+}
+
 function renderPalette(): void {
   const config = state.config;
   if (!config) {
@@ -923,6 +935,19 @@ function renderPalette(): void {
 
   dom.drawerBody.innerHTML = `
     <div class="standards-section">
+      <div class="section-title">写入范围</div>
+      <div class="segmented" id="scope-switch">
+        <button data-scope="global" class="${state.scope === 'global' ? 'active' : ''}">全局</button>
+        <button data-scope="workspace" class="${state.scope === 'workspace' ? 'active' : ''}" ${config.themeScope?.hasWorkspace ? '' : 'disabled'}>当前工作区</button>
+      </div>
+      ${
+        config.themeScope?.workspaceOverride
+          ? '<div class="scope-note">当前工作区已有独立主题 <button id="clear-scope">清除</button></div>'
+          : ''
+      }
+    </div>
+
+    <div class="standards-section">
       <div class="section-title">主题</div>
       <div class="swatch-grid">${swatches}</div>
       <div class="accent-row">
@@ -930,6 +955,15 @@ function renderPalette(): void {
         <input type="color" id="accent-color" value="${theme.accent}" />
         <code id="accent-hex">${theme.accent}</code>
       </div>
+    </div>
+
+    <div class="standards-section">
+      <div class="section-title">主题包</div>
+      <div class="qa-actions">
+        <button class="ghost-btn" id="theme-import">导入…</button>
+        <button class="ghost-btn" id="theme-export">导出…</button>
+      </div>
+      <div class="hint">导出为 JSON 分享给同事；导入会逐字段校验，坏值回退默认。</div>
     </div>
 
     <div class="standards-section">
@@ -963,7 +997,15 @@ function renderPalette(): void {
     <div class="standards-section">
       <div class="section-title">自定义 CSS</div>
       <textarea id="custom-css" rows="5" placeholder=".msg { border-radius: 4px; }">${escapeText(theme.customCss)}</textarea>
-      <button class="ghost-btn" id="css-apply">应用 CSS</button>
+      <div class="css-chips">
+        ${CSS_SNIPPETS.map(
+          ([label]) => `<button class="chip" data-css-snippet="${escapeAttr(label)}">${escapeText(label)}</button>`,
+        ).join('')}
+      </div>
+      <div class="qa-actions">
+        <button class="ghost-btn" id="css-revert">撤销预览</button>
+        <button class="primary-btn" id="css-apply">保存 CSS</button>
+      </div>
     </div>`;
 
   dom.drawerFoot.innerHTML = '<span class="hint">改动即时预览，并写入你的 VS Code 设置</span>';
@@ -976,7 +1018,7 @@ function renderPalette(): void {
       }
       state.config.theme.id = id;
       applyAppearance(state.config);
-      post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.theme', value: id } });
+      post({ type: 'command', command: 'deskpet.updateSetting', args: { scope: settingScope(), key: 'ui.theme', value: id } });
       renderPalette();
     });
   });
@@ -984,7 +1026,7 @@ function renderPalette(): void {
   const colorInput = dom.drawerBody.querySelector<HTMLInputElement>('#accent-color');
   const hexLabel = dom.drawerBody.querySelector<HTMLElement>('#accent-hex');
   const pushAccent = debounce((value: string) => {
-    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.accent', value } });
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { scope: settingScope(), key: 'ui.accent', value } });
   }, 400);
 
   colorInput?.addEventListener('input', () => {
@@ -999,7 +1041,7 @@ function renderPalette(): void {
     }
     applyAppearance(state.config);
     pushAccent(value);
-    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.theme', value: 'custom' } });
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { scope: settingScope(), key: 'ui.theme', value: 'custom' } });
     dom.drawerBody.querySelectorAll<HTMLElement>('[data-theme]').forEach((element) => {
       element.classList.toggle('active', element.dataset.theme === 'custom');
     });
@@ -1022,7 +1064,7 @@ function renderPalette(): void {
         }
         applyAppearance(state.config);
         group.querySelectorAll('button').forEach((element) => element.classList.toggle('active', element === button));
-        post({ type: 'command', command: 'deskpet.updateSetting', args: { key: `ui.${key}`, value } });
+        post({ type: 'command', command: 'deskpet.updateSetting', args: { scope: settingScope(), key: `ui.${key}`, value } });
       });
     });
   });
@@ -1034,7 +1076,7 @@ function renderPalette(): void {
     }
     state.config.theme.nameplate = nameplate.checked;
     applyAppearance(state.config);
-    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.nameplate', value: nameplate.checked } });
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { scope: settingScope(), key: 'ui.nameplate', value: nameplate.checked } });
   });
 
   const list = dom.drawerBody.querySelector<HTMLElement>('#qa-list');
@@ -1078,12 +1120,33 @@ function renderPalette(): void {
     const actions = next.length ? next.slice(0, 10) : [...DEFAULT_QUICK_ACTIONS];
     state.config.quickActions = actions;
     applyAppearance(state.config);
-    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.quickActions', value: actions } });
+    post({ type: 'command', command: 'deskpet.updateSetting', args: { scope: settingScope(), key: 'ui.quickActions', value: actions } });
     toast('快捷按钮已保存');
     renderPalette();
   });
 
+  const savedCss = theme.customCss;
   const cssBox = dom.drawerBody.querySelector<HTMLTextAreaElement>('#custom-css');
+  const previewCss = (value: string) => {
+    applyCustomCss(value);
+    if (state.config) {
+      state.config.theme.customCss = value;
+    }
+  };
+
+  cssBox?.addEventListener('input', () => previewCss(cssBox.value));
+
+  dom.drawerBody.querySelectorAll<HTMLElement>('[data-css-snippet]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      if (!cssBox) {
+        return;
+      }
+      const snippet = CSS_SNIPPETS.find(([label]) => label === chip.dataset.cssSnippet)?.[1] ?? '';
+      cssBox.value = `${cssBox.value.trim()}\n${snippet}`.trim();
+      previewCss(cssBox.value);
+    });
+  });
+
   dom.drawerBody.querySelector('#css-apply')?.addEventListener('click', () => {
     if (!state.config || !cssBox) {
       return;
@@ -1091,12 +1154,49 @@ function renderPalette(): void {
     const css = cssBox.value.slice(0, 12_000);
     state.config.theme.customCss = css;
     applyCustomCss(css);
-    post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'ui.customCss', value: css } });
-    toast('自定义 CSS 已应用');
+    post({
+      type: 'command',
+      command: 'deskpet.updateSetting',
+      args: { scope: settingScope(), key: 'ui.customCss', value: css },
+    });
+    toast('自定义 CSS 已保存');
+  });
+
+  dom.drawerBody.querySelector('#css-revert')?.addEventListener('click', () => {
+    if (!cssBox) {
+      return;
+    }
+    cssBox.value = savedCss;
+    previewCss(savedCss);
+    toast('已撤销未保存的 CSS 预览');
+  });
+
+  dom.drawerBody.querySelectorAll<HTMLButtonElement>('#scope-switch [data-scope]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = button.dataset.scope as 'global' | 'workspace' | undefined;
+      if (!value || button.disabled) {
+        return;
+      }
+      state.scope = value;
+      vscode.setState({ ...(vscode.getState() ?? {}), scope: value });
+      renderPalette();
+      toast(value === 'workspace' ? '之后的外观改动只写入当前工作区' : '之后的外观改动写入全局设置');
+    });
+  });
+
+  dom.drawerBody.querySelector('#clear-scope')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.clearWorkspaceTheme });
+  });
+  dom.drawerBody.querySelector('#theme-import')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.importTheme });
+  });
+  dom.drawerBody.querySelector('#theme-export')?.addEventListener('click', () => {
+    post({ type: 'command', command: CMD.exportTheme });
   });
 }
 
-function renderSettings(): void {  dom.drawerTitle.textContent = '设置';
+function renderSettings(): void {
+  dom.drawerTitle.textContent = '设置';
   const config = state.config;
   const snapshot = state.snapshot;
   dom.drawerBody.innerHTML = `

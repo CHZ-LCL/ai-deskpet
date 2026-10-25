@@ -145,6 +145,8 @@ export interface PetConfig {
   quickActions: QuickAction[];
   persona: PetPersona;
   greeting?: string;
+  /** 主题写入范围（用于面板提示） */
+  themeScope?: { hasWorkspace: boolean; workspaceOverride: boolean };
   /** 按需加载的渲染器脚本地址（webview 资源 url） */
   rendererScripts: { live2d?: string; vrm?: string };
 }
@@ -261,6 +263,9 @@ export const CMD = {
   reviewFile: 'deskpet.reviewFile',
   reviewRules: 'deskpet.reviewRules',
   modernize: 'deskpet.modernize',
+  exportTheme: 'deskpet.exportTheme',
+  importTheme: 'deskpet.importTheme',
+  clearWorkspaceTheme: 'deskpet.clearWorkspaceTheme',
   generateDocs: 'deskpet.generateDocs',
   checkDocs: 'deskpet.checkDocs',
   inlineChat: 'deskpet.inlineChat',

@@ -148,6 +148,21 @@
         "category": "AI 桌宠"
       },
       {
+        "command": "deskpet.exportTheme",
+        "title": "导出桌宠主题…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.importTheme",
+        "title": "导入桌宠主题…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.clearWorkspaceTheme",
+        "title": "清除当前工作区的主题覆盖",
+        "category": "AI 桌宠"
+      },
+      {
         "command": "deskpet.checkDocs",
         "title": "检查文档与签名是否同步",
         "category": "AI 桌宠"

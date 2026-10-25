@@ -465,15 +465,34 @@ ollama pull qwen2.5-coder:14b
 - 命令填 `__docs__` 表示点击后切到「查资料」输入模式；
 - 最多 10 个，点「保存」立即生效；留空则回退到内置按钮组。
 
-### 自定义 CSS
+### 主题包与工作区覆盖
 
-最后一段是「自定义 CSS」输入框，直接追加到桌宠 webview：
+- **导出 / 导入**：个性化面板里的「导入… / 导出…」。导出是版本化的 JSON，可以发给同事；
+  导入会逐字段校验（枚举、颜色、CSS 长度、按钮数量），坏值自动回退，不会把面板搞崩。
+- **写入范围**：面板顶部的「全局 / 当前工作区」。选「当前工作区」后，主题改动写进工作区设置、随项目走；
+  如果已经存在工作区覆盖，面板会提示并提供「清除」。
 
-```css
-/* 圆角更小、气泡更紧凑 */
-.msg { border-radius: 8px; }
-.speech { border-radius: 10px; }
+```json
+{
+  "version": 1,
+  "name": "我的薄荷",
+  "theme": {
+    "id": "custom",
+    "accent": "#4ec9b0",
+    "background": "grid",
+    "motion": "full",
+    "density": "cozy",
+    "nameplate": true,
+    "customCss": ".msg { border-radius: 8px; }"
+  },
+  "quickActions": [{ "label": "讲解", "command": "deskpet.explainSelection" }]
+}
 ```
+
+### 自定义 CSS 实时预览
+
+输入即生效（只是预览），点「保存 CSS」才写入设置；「撤销预览」回到上次保存的版本。
+下面还有四个片段按钮（紧凑气泡 / 等宽代码 / 隐藏光晕 / 大圆角），点一下直接插入。
 
 几点边界：只作用于桌宠面板，不会影响编辑器；仍然受 webview 的 CSP 限制（`url(https://…)` 这类外部资源会被拦截）；
 最多 12000 字符。
@@ -563,6 +582,9 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.generateDocs` | — | 为函数/类生成或扩写文档注释 |
 | `deskpet.checkDocs` | — | 检查文档与签名是否同步 |
 | `deskpet.commitMessage` | — | 根据 git diff 生成提交信息 |
+| `deskpet.exportTheme` | — | 导出当前主题为 JSON |
+| `deskpet.importTheme` | — | 导入主题文件（全局 / 工作区） |
+| `deskpet.clearWorkspaceTheme` | — | 清除当前工作区的主题覆盖 |
 | `deskpet.searchDocs` | — | 查资料 / 抓取文档 URL |
 | `deskpet.reindex` | — | 重建项目索引（也会在状态栏显示进度） |
 | `deskpet.importModel` | — | 导入形象 |
@@ -620,7 +642,7 @@ npm run preview     # 起一个静态服务，看 dev/preview.html
 可以在浏览器里快速调样式，不用每次重载 VS Code。改完 `webview/` 后需要先 `npm run compile`。
 
 ```bash
-npm test               # 单元测试（31 个）
+npm test               # 单元测试（38 个）
 npm run test:integration  # 真实 VS Code 集成测试（首次会下载 VS Code）
 npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 ```
@@ -635,7 +657,7 @@ npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 
 | 命令 | 内容 | 依赖 |
 | --- | --- | --- |
-| `npm test` | 31 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
+| `npm test` | 38 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
 | `npm run test:integration` | 4 个集成测试 | 下载 stable VS Code，真实激活扩展 |
 | `npm run test:visual` | 暗色 / 亮色截图对比 | headless Chrome + pngjs |
 
