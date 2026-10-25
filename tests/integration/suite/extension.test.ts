@@ -15,6 +15,8 @@ const EXPECTED_COMMANDS = [
   'deskpet.fixAll',
   'deskpet.undoLastFix',
   'deskpet.fixHistory',
+  'deskpet.rewriteFile',
+  'deskpet.checkCapability',
   'deskpet.inlineChat',
   'deskpet.inlineApply',
   'deskpet.inlineDiff',

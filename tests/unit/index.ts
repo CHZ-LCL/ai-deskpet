@@ -7,3 +7,4 @@ import './patch.test';
 import './themeFile.test';
 import './history.test';
 import './verify.test';
+import './capability.test';

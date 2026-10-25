@@ -113,6 +113,16 @@
         "category": "AI 桌宠"
       },
       {
+        "command": "deskpet.rewriteFile",
+        "title": "全文修改当前文件…",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.checkCapability",
+        "title": "验证模型的全文修改能力",
+        "category": "AI 桌宠"
+      },
+      {
         "command": "deskpet.analyzeFailure",
         "title": "分析最近一次命令失败",
         "category": "AI 桌宠"
@@ -272,6 +282,10 @@
         {
           "command": "deskpet.fixAll",
           "group": "deskpet@5b"
+        },
+        {
+          "command": "deskpet.rewriteFile",
+          "group": "deskpet@5c"
         },
         {
           "command": "deskpet.reviewFile",
@@ -527,6 +541,20 @@
           "type": "boolean",
           "default": true,
           "description": "修改后验证时，同时检查依赖当前文件的文件（最多 4 个）。"
+        },
+        "deskpet.rewrite.maxLines": {
+          "type": "number",
+          "default": 1200,
+          "minimum": 200,
+          "maximum": 5000,
+          "description": "全文修改允许的最大行数（模型通过能力验证后生效）。"
+        },
+        "deskpet.rewrite.maxChars": {
+          "type": "number",
+          "default": 48000,
+          "minimum": 10000,
+          "maximum": 200000,
+          "description": "全文修改允许的最大字符数（模型通过能力验证后生效）。"
         },
         "deskpet.debug.watchTerminal": {
           "type": "boolean",

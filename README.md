@@ -537,7 +537,19 @@ ollama pull qwen2.5-coder:14b
 3. 应用前做完整性校验：长度不能缩水一半以上、原有 `import`/`export`/`require` 与顶层声明（函数、类、接口）必须全部保留；否则退化成「补丁卡片」，不会硬写。
 4. 直接应用并保存，然后给 **撤销 / 查看差异** 两个按钮。
 
-限制：文件需 ≤ 500 行且 ≤ 24k 字符，超出会建议用问题清单逐条修复（更安全）。
+限制：文件需 ≤ 500 行且 ≤ 24k 字符；**模型通过整文件改写验证后**可放宽到 1200 行 / 48k 字符
+（`deskpet.rewrite.maxLines` / `maxChars`）。超出会建议用问题清单逐条修复。
+
+### 全文修改与能力验证
+
+「一键修复」只处理错误；想按一句话重写整个文件，用 **AI 桌宠: 全文修改当前文件…**。
+
+- 第一次会先用一个 8 行的样本测试模型：必须返回完整文件、保留标记注释与原函数、修掉越界、且没有截断。
+  结果按「provider + model + baseUrl」记住，换模型或接口地址后自动失效。
+- 通过后全文修改上限放宽到 1200 行 / 48k 字符；未通过则退回逐条修复。
+- 生成结果仍要过一遍完整文件校验（保留 import / 顶层声明），然后以变更卡片 + 自动 diff 展示；
+  应用后走「修改历史 + 修改后验证」，出错可以一键回退。
+- 也可以单独运行 **验证模型的全文修改能力**，在设置里能看到 `/` 到 `/` 的结果提示。
 
 ### 修改历史（滚动回退）
 
@@ -594,6 +606,8 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.fix.maxAutoDiagnostics` | `6` | 一键修复最多处理的错误数 |
 | `deskpet.verify.afterEdit` | `true` | 应用修改后自动对比诊断，发现新错误时提示 |
 | `deskpet.verify.dependents` | `true` | 验证时同时检查依赖文件（最多 4 个） |
+| `deskpet.rewrite.maxLines` | `1200` | 全文修改最大行数（验证通过后生效） |
+| `deskpet.rewrite.maxChars` | `48000` | 全文修改最大字符数（验证通过后生效） |
 | `deskpet.debug.watchTerminal` | `true` | 捕获终端失败输出（需 VS Code 1.93+） |
 | `deskpet.standards.packs` | `js-modern,security,consistency` | 启用的规则包 |
 | `deskpet.standards.custom` | `[]` | 团队自定义规则（写进提示词） |
@@ -632,6 +646,8 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.fixAll` | — | 一键修复当前文件的错误 |
 | `deskpet.undoLastFix` | — | 回退最近一次 AI 修改 |
 | `deskpet.fixHistory` | — | 查看 AI 修改历史并回退 |
+| `deskpet.rewriteFile` | — | 全文修改当前文件（先验证模型能力） |
+| `deskpet.checkCapability` | — | 验证模型的整文件改写能力 |
 | `deskpet.analyzeFailure` | — | 分析最近一次失败的终端命令 |
 | `deskpet.analyzeClipboard` | — | 分析剪贴板里的报错 / 堆栈 |
 | `deskpet.reviewFile` | — | 静态体检当前文件 |
@@ -702,7 +718,7 @@ npm run preview     # 起一个静态服务，看 dev/preview.html
 可以在浏览器里快速调样式，不用每次重载 VS Code。改完 `webview/` 后需要先 `npm run compile`。
 
 ```bash
-npm test               # 单元测试（51 个）
+npm test               # 单元测试（57 个）
 npm run test:integration  # 真实 VS Code 集成测试（首次会下载 VS Code）
 npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 ```
@@ -717,7 +733,7 @@ npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
 
 | 命令 | 内容 | 依赖 |
 | --- | --- | --- |
-| `npm test` | 51 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
+| `npm test` | 57 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
 | `npm run test:integration` | 4 个集成测试 | 下载 stable VS Code，真实激活扩展 |
 | `npm run test:visual` | 暗色 / 亮色截图对比 | headless Chrome + pngjs |
 

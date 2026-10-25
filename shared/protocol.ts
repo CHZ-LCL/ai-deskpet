@@ -269,6 +269,8 @@ export const CMD = {
   fixAll: 'deskpet.fixAll',
   undoLastFix: 'deskpet.undoLastFix',
   fixHistory: 'deskpet.fixHistory',
+  rewriteFile: 'deskpet.rewriteFile',
+  checkCapability: 'deskpet.checkCapability',
   generateDocs: 'deskpet.generateDocs',
   checkDocs: 'deskpet.checkDocs',
   inlineChat: 'deskpet.inlineChat',

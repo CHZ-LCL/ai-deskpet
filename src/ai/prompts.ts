@@ -377,6 +377,33 @@ export function fixAllPrompt(options: {
   ].join('\n');
 }
 
+export function rewritePrompt(options: {
+  file: string;
+  languageId: string;
+  instruction: string;
+  code: string;
+}): string {
+  return [
+    `请对 ${options.file} 做一次全文修改。`,
+    `用户的要求：${options.instruction}`,
+    '',
+    '输出格式严格如下（某项确实没有就写“无”）：',
+    '【问题】现在哪里不满足要求，或这次要改什么',
+    '【原因】为什么要改（可读性/正确性/性能/一致性）',
+    '【方案】改动的要点，最多 3 条',
+    '【影响】行为是否变化、需要同步改哪些调用方',
+    '然后输出**一个完整文件**的代码块：',
+    '- 保留所有原有 import/export、注释和与本次要求无关的逻辑；',
+    '- 不能省略、不能用“其余不变”之类的占位；',
+    '- 不要引入新依赖，不要顺手重构无关代码。',
+    '',
+    '当前完整文件：',
+    '```' + options.languageId,
+    options.code,
+    '```',
+  ].join('\n');
+}
+
 export function reviewPrompt(file: string, languageId: string, code: string): string {  return [
     `请对下面这段 ${languageId} 代码（${file}）做一次静态检修。这不是让你重写，而是找问题。`,
     '',

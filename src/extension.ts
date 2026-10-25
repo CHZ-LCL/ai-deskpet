@@ -7,6 +7,7 @@ import { registerTestCommands } from './commands/tests';
 import { registerThemeCommands } from './commands/theme';
 import { registerFixAllCommand } from './commands/fixAll';
 import { registerHistoryCommands } from './commands/history';
+import { registerRewriteCommands } from './commands/rewrite';
 import { initFixHistory } from './history/fixHistory';
 import { registerDebugCommands } from './commands/debug';
 import { registerStandardsCommands } from './commands/standards';
@@ -100,8 +101,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(...registerTestCommands(host));
   context.subscriptions.push(...registerDocCommands(host));
   context.subscriptions.push(...registerThemeCommands(host, context));
-  context.subscriptions.push(...registerFixAllCommand(host));
+  context.subscriptions.push(...registerFixAllCommand(host, context));
   context.subscriptions.push(...registerHistoryCommands(host));
+  context.subscriptions.push(...registerRewriteCommands(host, context));
   registerInlineChat(context, host);
   registerInlineCodeLens(context);
   bindAdviceActions(host);
