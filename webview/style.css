@@ -529,15 +529,15 @@ button {
 .copy-btn {
   border: none;
   background: transparent;
-  color: var(--vscode-textLink-foreground, var(--accent));
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
   font-size: 10.5px;
   padding: 2px 4px;
   border-radius: 5px;
 }
 
 .copy-btn:hover {
-  background: var(--vscode-toolbar-hoverBackground, color-mix(in srgb, var(--ink) 10%, transparent));
-  color: var(--vscode-foreground, var(--ink));
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--ink);
 }
 
 .code-block pre {
@@ -1964,6 +1964,7 @@ body.vscode-light .segmented button.active,
 body.vscode-light .quick-actions button:hover,
 body.vscode-light .quick-actions button.active,
 body.vscode-light .link-btn,
+body.vscode-light .copy-btn,
 body.vscode-light .problem-actions button:hover {
   color: color-mix(in srgb, var(--accent) 42%, var(--ink));
 }
