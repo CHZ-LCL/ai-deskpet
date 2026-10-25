@@ -1,8 +1,11 @@
 import * as crypto from 'node:crypto';
 import * as vscode from 'vscode';
 import type {
+  AdviceAction,
+  AdviceCard,
   ChatMessage,
   HostMessage,
+  InterruptionLevel,
   PetAction,
   PetConfig,
   PetSnapshot,
@@ -65,6 +68,10 @@ export class PetHost implements vscode.Disposable {
   private busyLabel: string | undefined;
   private current: { id: string; cts: vscode.CancellationTokenSource } | undefined;
   private clickCount = 0;
+  private lastBubbleAt = 0;
+  private bubbleTimes: number[] = [];
+  private lastTypedAt = 0;
+  private adviceHandler?: (id: string, action: AdviceAction) => Promise<void>;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -134,6 +141,63 @@ export class PetHost implements vscode.Disposable {
   react(action: PetAction): void {
     this.state.setMood(action);
     this.broadcast({ type: 'react', action });
+  }
+
+  /** 供扩展记录“用户正在输入”，主动提醒会避开这个窗口。 */
+  markTyping(): void {
+    this.lastTypedAt = Date.now();
+  }
+
+  /**
+   * 克制型主动提醒：按打扰等级、最近是否弹过、是否正在打字决定用气泡还是只写进对话。
+   * 这样“有价值的信息”不会丢，但也不会一直抢焦点。
+   */
+  nudge(
+    text: string,
+    options: {
+      priority?: 'low' | 'normal';
+      action?: PetAction;
+      actions?: Array<{ label: string; command?: string; send?: string }>;
+    } = {},
+  ): void {
+    const level = vscode.workspace
+      .getConfiguration('deskpet')
+      .get<InterruptionLevel>('pet.interruption', 'balanced');
+    const now = Date.now();
+    this.bubbleTimes = this.bubbleTimes.filter((time) => now - time < 3_600_000);
+
+    const typing = now - this.lastTypedAt < 5000;
+    const recentBubble = now - this.lastBubbleAt < 4 * 60_000;
+    const tooMany = this.bubbleTimes.length >= 6;
+
+    const quiet =
+      level === 'quiet' ||
+      (level === 'balanced' && (options.priority === 'low' || typing || recentBubble || tooMany));
+
+    if (!quiet) {
+      this.lastBubbleAt = now;
+      this.bubbleTimes.push(now);
+    }
+
+    this.broadcast({
+      type: 'nudge',
+      text,
+      quiet,
+      action: options.action ?? 'alert',
+      actions: options.actions,
+    });
+  }
+
+  setAdviceHandler(handler: (id: string, action: AdviceAction) => Promise<void>): void {
+    this.adviceHandler = handler;
+  }
+
+  presentAdvice(advice: AdviceCard): void {
+    this.broadcast({ type: 'advice', advice });
+  }
+
+  resolveAdvice(id: string, action: AdviceAction, ok: boolean): void {
+    this.broadcast({ type: 'adviceDone', id, action, ok });
   }
 
   notice(text: string, kind: 'info' | 'warn' | 'error' = 'info'): void {
@@ -359,6 +423,9 @@ export class PetHost implements vscode.Disposable {
         break;
       case 'click':
         this.handleClick();
+        break;
+      case 'adviceAction':
+        await this.adviceHandler?.(message.id, message.action);
         break;
       case 'command':
         await vscode.commands.executeCommand(message.command, message.args);

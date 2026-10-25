@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { API_KEY_SECRET } from './ai';
-import { diffContentProvider, focusPet, registerAssistCommands } from './commands/assist';
+import { diffContentProvider, focusPet, registerAssistCommands, bindAdviceActions } from './commands/assist';
 import { ProjectContext } from './context/project';
 import { DOCS_KEY_SECRET } from './docs/search';
 import { AssetStore } from './pet/assets';
@@ -77,6 +77,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(...registerAssistCommands(host));
+  bindAdviceActions(host);
 
   registerReactions(context, host, project);
   registerStartup(context);
@@ -214,6 +215,7 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
     vscode.workspace.onDidChangeTextDocument((event) => {
       if (event.document.uri.scheme === 'file') {
         markActive();
+        host.markTyping();
       }
     }),
   );
@@ -249,12 +251,12 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
           return;
         }
         lastHint.set(activeUri, Date.now());
-        host.say(`这个文件有 ${errors.length} 处错误，要我看看吗？`, {
+        host.nudge(`这个文件有 ${errors.length} 处错误，要我看看吗？`, {
+          priority: 'normal',
           action: 'alert',
-          ttl: 12_000,
           actions: [
             { label: '帮我修', command: CMD.fix },
-            { label: '先不用' },
+            { label: '讲透这段', command: CMD.teach },
           ],
         });
       }, 2500);
@@ -270,10 +272,13 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
         return;
       }
       host.react('alert');
-      host.say(`「${name}」没有通过，要我帮你看看代码吗？`, {
+      host.nudge(`「${name}」没有通过，要我帮你看看代码吗？`, {
+        priority: 'normal',
         action: 'alert',
-        ttl: 12_000,
-        actions: [{ label: '讲解当前文件', command: CMD.explain }],
+        actions: [
+          { label: '讲解当前文件', command: CMD.explain },
+          { label: '讲透这段', command: CMD.teach },
+        ],
       });
     }),
   );
@@ -302,9 +307,9 @@ function registerReactions(context: vscode.ExtensionContext, host: PetHost, proj
       return;
     }
     if (now - codingSince >= minutes * 60_000) {
-      host.say(`已经连续写了 ${Math.round((now - codingSince) / 60_000)} 分钟啦，站起来接杯水、看看远处吧。`, {
+      host.nudge(`已经连续写了 ${Math.round((now - codingSince) / 60_000)} 分钟啦，站起来接杯水、看看远处吧。`, {
+        priority: 'low',
         action: 'sleep',
-        ttl: 15_000,
       });
       codingSince = now;
     }

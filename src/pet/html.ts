@@ -43,6 +43,7 @@ export function renderWebviewHtml(webview: vscode.Webview, context: vscode.Exten
             <div class="speech-actions" id="speech-actions"></div>
           </div>
           <div class="pet-mount" id="pet-mount"></div>
+          <span class="unread-dot" id="unread-dot" hidden title="有新的提醒">0</span>
         </div>
         <div class="name-plate" id="name-plate">小豆 · 发呆中</div>
       </div>
@@ -53,6 +54,7 @@ export function renderWebviewHtml(webview: vscode.Webview, context: vscode.Exten
       <div class="chat-log" id="chat-log" aria-live="polite"></div>
       <div class="quick-actions" id="quick-actions">
         <button data-quick="explain">讲解代码</button>
+        <button data-quick="teach">讲透它</button>
         <button data-quick="fix">帮我修</button>
         <button data-quick="tests">写测试</button>
         <button data-quick="docs">查文档</button>

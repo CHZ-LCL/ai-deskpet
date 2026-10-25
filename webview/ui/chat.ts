@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../../shared/protocol';
+import type { AdviceAction, AdviceCard, ChatMessage } from '../../shared/protocol';
 import { escapeHtml } from '../util';
 import { renderMarkdown } from './markdown';
 
@@ -107,6 +107,94 @@ export class ChatView {
       this.append('pet', message, `err-${id}`, true);
     }
     this.scrollToBottom();
+  }
+
+  /** 主动提醒：安静模式下只在这里留一条，不抢焦点。 */
+  addNudge(text: string, actions?: Array<{ label: string; command?: string; send?: string }>): void {
+    const element = document.createElement('div');
+    element.className = 'chat-nudge';
+
+    const body = document.createElement('div');
+    body.className = 'md';
+    body.innerHTML = renderMarkdown(text);
+    element.appendChild(body);
+
+    if (actions?.length) {
+      const row = document.createElement('div');
+      row.className = 'chat-nudge-actions';
+      for (const action of actions) {
+        const button = document.createElement('button');
+        button.textContent = action.label;
+        if (action.command) {
+          button.dataset.command = action.command;
+        }
+        if (action.send) {
+          button.dataset.send = action.send;
+        }
+        row.appendChild(button);
+      }
+      element.appendChild(row);
+    }
+
+    this.log.appendChild(element);
+    this.scrollToBottom();
+  }
+
+  /** 修复/重构的“变更说明”卡片：先讲清问题、原因、方案、影响，再让用户决定。 */
+  addAdvice(advice: AdviceCard): void {
+    if (this.log.querySelector(`[data-advice="${advice.id}"]`)) {
+      return;
+    }
+
+    const element = document.createElement('div');
+    element.className = 'advice-card';
+    element.dataset.advice = advice.id;
+
+    const row = (label: string, value: string) =>
+      value
+        ? `<div class="advice-row"><span class="advice-label">${label}</span><div class="md">${renderMarkdown(value)}</div></div>`
+        : '';
+
+    element.innerHTML = `
+      <div class="advice-head">
+        <span class="advice-title">${escapeHtml(advice.title)}</span>
+        <span class="advice-loc">${escapeHtml(advice.file)}:${advice.startLine}-${advice.endLine}</span>
+      </div>
+      ${row('问题', advice.problem)}
+      ${row('原因', advice.cause)}
+      ${row('方案', advice.plan)}
+      ${row('影响', advice.impact)}
+      <div class="advice-actions">
+        <button data-advice-action="diff">先看差异</button>
+        <button data-advice-action="apply" class="primary">应用修改</button>
+        <button data-advice-action="copy" class="ghost">复制代码</button>
+        <button data-advice-action="dismiss" class="ghost">忽略</button>
+      </div>`;
+
+    this.log.appendChild(element);
+    this.scrollToBottom();
+  }
+
+  resolveAdvice(id: string, action: AdviceAction, ok: boolean): void {
+    const card = this.log.querySelector<HTMLElement>(`[data-advice="${id}"]`);
+    if (!card) {
+      return;
+    }
+    card.querySelectorAll('button').forEach((button) => {
+      button.disabled = true;
+    });
+    card.classList.add(ok ? 'is-done' : 'is-failed');
+
+    const messages: Record<AdviceAction, string> = {
+      apply: '已应用到编辑器',
+      diff: '已打开差异预览',
+      copy: '代码已复制到剪贴板',
+      dismiss: '已忽略这条建议',
+    };
+    const footer = document.createElement('div');
+    footer.className = 'advice-foot';
+    footer.textContent = ok ? messages[action] : '操作失败，请重新生成建议';
+    card.appendChild(footer);
   }
 
   /** 系统提示/参考资料链接这类轻量信息。 */

@@ -1369,6 +1369,192 @@ body.pet-wide .chat {
   }
 }
 
+/* ---------------------------------------------------------------- 未读提醒 / 变更卡片 */
+
+.unread-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: linear-gradient(140deg, var(--warm), #ff8f6b);
+  color: #2b1207;
+  font-size: 9.6px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--warm) 38%, transparent);
+  z-index: 9;
+  pointer-events: none;
+  animation: dot-pop 0.24s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@keyframes dot-pop {
+  from {
+    scale: 0.2;
+    opacity: 0;
+  }
+}
+
+.advice-card {
+  align-self: stretch;
+  max-width: 96%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 11px 10px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
+  animation: msg-in 0.18s ease;
+}
+
+.advice-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.advice-title {
+  font-size: 11.6px;
+  font-weight: 600;
+}
+
+.advice-loc {
+  font-family: var(--mono);
+  font-size: 9.6px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.advice-row {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 6px;
+  font-size: 11.6px;
+  line-height: 1.55;
+}
+
+.advice-label {
+  font-size: 10.4px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  padding-top: 1px;
+}
+
+.advice-row .md p {
+  margin: 0.15em 0;
+}
+
+.advice-row .md ul,
+.advice-row .md ol {
+  margin: 0.2em 0;
+}
+
+.advice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 1px;
+}
+
+.advice-actions button {
+  padding: 3px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 10.6px;
+}
+
+.advice-actions button.primary {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: color-mix(in srgb, var(--accent) 85%, var(--ink));
+}
+
+.advice-actions button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.advice-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.advice-foot {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.advice-card.is-done {
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+}
+
+.advice-card.is-failed {
+  border-color: color-mix(in srgb, #ff8a80 45%, transparent);
+}
+
+.chat-nudge {
+  align-self: stretch;
+  max-width: 96%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 9px;
+  border-radius: 11px;
+  border: 1px dashed color-mix(in srgb, var(--warm) 42%, var(--line));
+  background: color-mix(in srgb, var(--warm) 6%, transparent);
+  font-size: 11.4px;
+  line-height: 1.5;
+}
+
+.chat-nudge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chat-nudge-actions button {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 10.4px;
+}
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.segmented button {
+  flex: 1;
+  height: 22px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10.6px;
+}
+
+.segmented button.active {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+  color: color-mix(in srgb, var(--accent) 85%, var(--ink));
+  box-shadow: 0 1px 4px color-mix(in srgb, #000 18%, transparent);
+}
+
 /* ---------------------------------------------------------------- 响应式 */
 
 @media (min-width: 620px) {

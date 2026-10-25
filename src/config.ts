@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { PetConfig, RendererKind } from '../shared/protocol';
+import type { InterruptionLevel, PetConfig, RendererKind } from '../shared/protocol';
 import { providerLabel, readAiSettings } from './ai';
 import type { AssetStore } from './pet/assets';
 
@@ -22,6 +22,7 @@ export async function buildPetConfig(
     aiProviderLabel: providerLabel(ai),
     aiModel: ai.model,
     contextLabel,
+    interruption: config.get<InterruptionLevel>('pet.interruption', 'balanced'),
     rendererScripts: {
       live2d: webview
         .asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview', 'renderer-live2d.js'))

@@ -78,6 +78,11 @@
         "category": "AI 桌宠"
       },
       {
+        "command": "deskpet.teachSelection",
+        "title": "当老师讲透这段代码（逐行 / 逻辑 / 设计）",
+        "category": "AI 桌宠"
+      },
+      {
         "command": "deskpet.fixSelection",
         "title": "诊断并修复选中代码",
         "category": "AI 桌宠"
@@ -158,14 +163,19 @@
           "group": "deskpet@1"
         },
         {
-          "command": "deskpet.fixSelection",
+          "command": "deskpet.teachSelection",
           "when": "editorHasSelection",
           "group": "deskpet@2"
         },
         {
-          "command": "deskpet.addTests",
+          "command": "deskpet.fixSelection",
           "when": "editorHasSelection",
           "group": "deskpet@3"
+        },
+        {
+          "command": "deskpet.addTests",
+          "when": "editorHasSelection",
+          "group": "deskpet@4"
         }
       ],
       "commandPalette": [
@@ -269,6 +279,36 @@
           "type": "boolean",
           "default": true,
           "description": "代码出现错误时桌宠提醒你。"
+        },
+        "deskpet.pet.interruption": {
+          "type": "string",
+          "enum": [
+            "quiet",
+            "balanced",
+            "chatty"
+          ],
+          "enumDescriptions": [
+            "安静：所有主动提醒只写进对话，不弹气泡",
+            "平衡：重要提醒才弹气泡，打字时自动静默",
+            "话多：每次提醒都弹气泡"
+          ],
+          "default": "balanced",
+          "description": "主动提醒的打扰程度。"
+        },
+        "deskpet.teach.depth": {
+          "type": "string",
+          "enum": [
+            "line",
+            "logic",
+            "design"
+          ],
+          "enumDescriptions": [
+            "逐行讲解：按行号讲清每一行",
+            "逻辑梳理：按执行顺序拆步骤",
+            "设计思路：为什么这样设计、怎么扩展"
+          ],
+          "default": "line",
+          "description": "「当老师讲透这段代码」默认使用的讲解深度。"
         },
         "deskpet.ai.provider": {
           "type": "string",

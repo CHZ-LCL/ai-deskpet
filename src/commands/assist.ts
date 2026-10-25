@@ -4,8 +4,19 @@ import * as path from 'node:path';
 import { promisify } from 'node:util';
 import * as vscode from 'vscode';
 import { CMD, DIFF_SCHEME, VIEW_ID } from '../../shared/protocol';
+import type { AdviceAction, AdviceCard } from '../../shared/protocol';
+import { parseAdvice } from '../ai/advice';
 import { collectEditorSnippet, formatSnippet, type EditorSnippet } from '../ai/context';
-import { commitPrompt, explainPrompt, fixPrompt, refactorPrompt, testPrompt } from '../ai/prompts';
+import {
+  commitPrompt,
+  explainPrompt,
+  fixPrompt,
+  refactorPrompt,
+  TEACH_DEPTH_LABEL,
+  teachPrompt,
+  testPrompt,
+  type TeachDepth,
+} from '../ai/prompts';
 import type { PetHost } from '../pet/host';
 import { extractCode, truncate } from '../util';
 
@@ -31,6 +42,7 @@ export async function focusPet(): Promise<void> {
 export function registerAssistCommands(host: PetHost): vscode.Disposable[] {
   return [
     vscode.commands.registerCommand(CMD.explain, () => explain(host)),
+    vscode.commands.registerCommand(CMD.teach, () => teach(host)),
     vscode.commands.registerCommand(CMD.fix, () => fix(host)),
     vscode.commands.registerCommand(CMD.refactor, () => refactor(host)),
     vscode.commands.registerCommand(CMD.tests, () => addTests(host)),
@@ -108,6 +120,74 @@ async function refactor(host: PetHost): Promise<void> {
   }
 }
 
+async function teach(host: PetHost): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  const snippet = editor ? collectEditorSnippet() : undefined;
+  if (!editor || !snippet) {
+    host.say('选中一段代码，我按“逐行 / 逻辑 / 设计”给你讲透。', { action: 'think' });
+    await focusPet();
+    return;
+  }
+
+  const depth = await pickTeachDepth();
+  if (!depth) {
+    return;
+  }
+
+  await focusPet();
+  const references = await referenceSummary(editor);
+  const label = `讲透 ${snippet.relativePath}（${TEACH_DEPTH_LABEL[depth]}）`;
+  await host.prompt(
+    label,
+    [
+      teachPrompt(snippet.languageId, snippet.relativePath, depth, references),
+      '',
+      formatSnippet(snippet),
+    ].join('\n'),
+    { action: 'think' },
+  );
+}
+
+async function pickTeachDepth(): Promise<TeachDepth | undefined> {
+  const config = vscode.workspace.getConfiguration('deskpet');
+  const preferred = config.get<TeachDepth>('teach.depth', 'line');
+  const items: Array<vscode.QuickPickItem & { value: TeachDepth }> = [
+    { label: '$(list-ordered) 逐行讲解', description: '按行号讲清每一行在做什么', value: 'line' },
+    { label: '$(git-branch) 逻辑梳理', description: '按执行顺序拆步骤、标出副作用', value: 'logic' },
+    { label: '$(lightbulb) 设计思路', description: '为什么这样设计、以后怎么扩展', value: 'design' },
+  ];
+  items.sort((left, right) => (left.value === preferred ? -1 : right.value === preferred ? 1 : 0));
+
+  const picked = await vscode.window.showQuickPick(items, {
+    title: '想怎么听？',
+    placeHolder: '桌宠会按这个深度讲解选中代码',
+  });
+  return picked?.value;
+}
+
+/** 取光标处符号的引用位置，帮模型讲清“谁在用它”。 */
+async function referenceSummary(editor: vscode.TextEditor): Promise<string> {
+  try {
+    const locations = (await vscode.commands.executeCommand(
+      'vscode.executeReferenceProvider',
+      editor.document.uri,
+      editor.selection.active,
+    )) as vscode.Location[] | undefined;
+    if (!locations?.length) {
+      return '';
+    }
+    return locations
+      .slice(0, 8)
+      .map((location) => {
+        const rel = vscode.workspace.asRelativePath(location.uri, false);
+        return `${rel}:${location.range.start.line + 1}`;
+      })
+      .join('\n');
+  } catch {
+    return '';
+  }
+}
+
 async function addTests(host: PetHost): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const snippet = editor ? collectEditorSnippet() : undefined;
@@ -141,55 +221,105 @@ async function offerReplacement(
   reply: string,
   title: string,
 ): Promise<void> {
-  const document = editor.document;
-  const { code } = extractCode(reply);
-  if (!code.trim()) {
+  const parsed = parseAdvice(reply);
+  if (!parsed.code.trim()) {
     return;
   }
 
-  const summary = reply.replace(/```[\s\S]*?```/g, '').trim();
-  const choice = await vscode.window.showInformationMessage(
-    `桌宠给出了${title}${summary ? `：${truncate(summary, 120)}` : ''}`,
-    { modal: false },
-    '应用替换',
-    '查看差异',
-    '复制代码',
-  );
+  const id = crypto.randomUUID();
+  const card: AdviceCard = {
+    id,
+    title,
+    file: vscode.workspace.asRelativePath(editor.document.uri, false),
+    startLine: snippet.startLine,
+    endLine: snippet.endLine,
+    problem: parsed.problem || '模型没有给出问题描述。',
+    cause: parsed.cause,
+    plan: parsed.plan,
+    impact: parsed.impact,
+  };
 
-  if (choice === '应用替换') {
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(document.uri, snippet.range, code);
-    const ok = await vscode.workspace.applyEdit(edit);
-    if (ok) {
-      await document.save();
-      host.say('已经帮你改好啦，跑一下看看？', { action: 'happy' });
-    } else {
-      host.say('替换没成功，可能是文件被改过了，再来一次？', { action: 'alert' });
-    }
-    return;
-  }
+  pendingAdvice.set(id, {
+    documentUri: editor.document.uri,
+    range: snippet.range,
+    originalText: editor.document.getText(snippet.range),
+    code: parsed.code,
+    card,
+  });
 
-  if (choice === '查看差异') {
-    await showDiff(document, snippet, code, title);
-    return;
-  }
-
-  if (choice === '复制代码') {
-    await vscode.env.clipboard.writeText(code);
-    host.say('代码已经复制到剪贴板。', { action: 'happy' });
-  }
+  // 不是弹窗，而是在对话里放一张“变更说明”卡片，用户自己决定下一步
+  host.presentAdvice(card);
 }
 
-async function showDiff(
-  document: vscode.TextDocument,
-  snippet: EditorSnippet,
-  code: string,
-  title: string,
-): Promise<void> {
+interface PendingAdvice {
+  documentUri: vscode.Uri;
+  range: vscode.Range;
+  originalText: string;
+  code: string;
+  card: AdviceCard;
+}
+
+const pendingAdvice = new Map<string, PendingAdvice>();
+
+/** 把卡片上的「看差异 / 应用 / 复制 / 忽略」接到具体动作上。 */
+export function bindAdviceActions(host: PetHost): void {
+  host.setAdviceHandler(async (id, action: AdviceAction) => {
+    const item = pendingAdvice.get(id);
+    if (!item) {
+      host.resolveAdvice(id, action, false);
+      return;
+    }
+
+    if (action === 'apply') {
+      const document = await vscode.workspace.openTextDocument(item.documentUri);
+      // 用户看建议的这段时间里文件可能被改过，范围失效就拒绝应用
+      if (document.getText(item.range) !== item.originalText) {
+        host.resolveAdvice(id, action, false);
+        host.notice('文件在你确认前发生了变化，请重新生成建议再应用。', 'warn');
+        return;
+      }
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(item.documentUri, item.range, item.code);
+      const ok = await vscode.workspace.applyEdit(edit);
+      if (!ok) {
+        host.resolveAdvice(id, action, false);
+        host.notice('替换没有成功，文件可能已经变化，请重新生成建议。', 'warn');
+        return;
+      }
+      try {
+        await document.save();
+      } catch {
+        // 保存失败时用户仍可手动保存
+      }
+      pendingAdvice.delete(id);
+      host.resolveAdvice(id, action, true);
+      host.say('已经按说明改好了，跑一下验证吧。', { action: 'happy' });
+      return;
+    }
+
+    if (action === 'diff') {
+      await showDiff(item);
+      host.resolveAdvice(id, action, true);
+      return;
+    }
+
+    if (action === 'copy') {
+      await vscode.env.clipboard.writeText(item.code);
+      host.resolveAdvice(id, action, true);
+      return;
+    }
+
+    pendingAdvice.delete(id);
+    host.resolveAdvice(id, action, true);
+  });
+}
+
+async function showDiff(item: PendingAdvice): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(item.documentUri);
   const full = document.getText();
-  const start = document.offsetAt(snippet.range.start);
-  const end = document.offsetAt(snippet.range.end);
-  const proposed = full.slice(0, start) + code + full.slice(end);
+  const start = document.offsetAt(item.range.start);
+  const end = document.offsetAt(item.range.end);
+  const proposed = full.slice(0, start) + item.code + full.slice(end);
 
   const ext = path.extname(document.fileName) || '.txt';
   const id = `/${crypto.randomUUID()}${ext}`;
@@ -199,7 +329,7 @@ async function showDiff(
     'vscode.diff',
     document.uri,
     right,
-    `${title} · ${path.basename(document.fileName)}`,
+    `${item.card.title} · ${path.basename(document.fileName)}`,
     { preview: true },
   );
 }

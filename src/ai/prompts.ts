@@ -36,9 +36,14 @@ export function explainPrompt(languageId: string, fileName: string): string {
 
 export function fixPrompt(languageId: string, fileName: string, diagnostics: string): string {
   return [
-    `下面的 ${languageId} 代码（文件：${fileName}）可能有错误。请修复它。`,
+    `下面的 ${languageId} 代码（文件：${fileName}）可能有错误。请先诊断，再修复。`,
     diagnostics ? `已知的诊断信息：\n${diagnostics}` : '',
-    '要求：输出一个完整的、可直接替换原代码的代码块，然后最多用 3 条要点说明改了什么。不要省略原有逻辑。',
+    '输出格式严格如下（某一项确实没有就写“无”）：',
+    '【问题】一句话说清哪里不对、用户会看到什么现象',
+    '【原因】为什么会这样，触发条件是什么',
+    '【方案】你准备怎么改，最多 3 条，每条一行',
+    '【影响】改动会波及哪些调用方、行为或边界条件',
+    '然后输出一个完整的、可直接替换原代码的代码块，不要省略原有逻辑。',
   ]
     .filter(Boolean)
     .join('\n');
@@ -47,7 +52,71 @@ export function fixPrompt(languageId: string, fileName: string, diagnostics: str
 export function refactorPrompt(languageId: string, goal: string): string {
   return [
     `请重构下面的 ${languageId} 代码。目标：${goal || '更清晰、更易维护，保持行为不变'}。`,
-    '要求：输出一个完整代码块（可替换原文），再用 3 条以内说明改进点。不要引入新依赖，除非确实必要并说明原因。',
+    '输出格式严格如下（某一项确实没有就写“无”）：',
+    '【问题】现状哪里不好，为什么要重构',
+    '【原因】它带来了什么具体成本（可读性 / 重复 / 耦合 / 性能）',
+    '【方案】改造步骤，最多 3 条',
+    '【影响】行为是否改变、需要同步改哪些地方、有什么风险',
+    '然后输出一个完整代码块（可替换原文）。不要引入新依赖，除非确实必要并说明原因。',
+  ].join('\n');
+}
+
+export type TeachDepth = 'line' | 'logic' | 'design';
+
+export const TEACH_DEPTH_LABEL: Record<TeachDepth, string> = {
+  line: '逐行讲解',
+  logic: '逻辑梳理',
+  design: '设计思路',
+};
+
+/**
+ * “一对一老师”模式：按深度把一段代码讲透。
+ * 行号约束写死，避免模型编造位置。
+ */
+export function teachPrompt(
+  languageId: string,
+  fileName: string,
+  depth: TeachDepth,
+  references: string,
+): string {
+  const shared = [
+    `你在给一个刚接手这段 ${languageId} 代码的开发者上课（文件：${fileName}）。`,
+    '不要复述代码表面，讲“为什么”和“所以然后”。引用位置时统一用 L<行号>，行号以给定代码为准，不要编造。',
+    references ? `\n这段代码在项目里的调用/引用位置：\n${references}` : '',
+  ];
+
+  if (depth === 'line') {
+    return [
+      ...shared,
+      '',
+      '请做**逐行讲解**：',
+      '1. 跳过空行、单独的括号等无信息量的行，只讲有逻辑的行。',
+      '2. 每行一个条目，格式：`L12` — 这行在做什么；必要时补一句“为什么这么写”。',
+      '3. 连续的多行如果是一个整体（如一个表达式、一个配置对象），合并成一条并写明行号范围。',
+      '4. 最后用 2-3 句话总结这段代码的整体意图。',
+    ].join('\n');
+  }
+
+  if (depth === 'logic') {
+    return [
+      ...shared,
+      '',
+      '请做**逻辑梳理**：',
+      '1. 按实际执行顺序拆成步骤（1/2/3…），标出分支、循环、提前返回和异常路径。',
+      '2. 单独列出所有**副作用**（I/O、状态修改、网络、文件、全局变量）。',
+      '3. 用文字画一条数据流：输入 → 中间形态 → 输出。',
+      '4. 指出最容易出错或最难测试的一步，并说明原因。',
+    ].join('\n');
+  }
+
+  return [
+    ...shared,
+    '',
+    '请讲**设计思路**：',
+    '1. 这段代码要解决的核心问题是什么，它做了哪些假设。',
+    '2. 为什么这样分层/抽象/命名；如果换成另一种常见写法，会付出什么代价。',
+    '3. 从调用方的角度看，这个接口的约束是什么（参数含义、返回值、错误处理）。',
+    '4. 如果要扩展或替换这部分，应该改哪里、不该动哪里。',
   ].join('\n');
 }
 

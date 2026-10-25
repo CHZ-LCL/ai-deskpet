@@ -54,6 +54,7 @@
               <div class="speech-actions" id="speech-actions"></div>
             </div>
             <div class="pet-mount" id="pet-mount"></div>
+            <span class="unread-dot" id="unread-dot" hidden title="有新的提醒">0</span>
           </div>
           <div class="name-plate" id="name-plate">小豆 · 发呆中</div>
         </div>
@@ -64,6 +65,7 @@
         <div class="chat-log" id="chat-log" aria-live="polite"></div>
         <div class="quick-actions" id="quick-actions">
           <button data-quick="explain">讲解代码</button>
+          <button data-quick="teach">讲透它</button>
           <button data-quick="fix">帮我修</button>
           <button data-quick="tests">写测试</button>
           <button data-quick="docs">查文档</button>
@@ -139,10 +141,41 @@
     };
 
     window.addEventListener('load', () => {
-      if (new URLSearchParams(location.search).has('empty')) {
+      const params = new URLSearchParams(location.search);
+      if (params.has('empty')) {
         init.history = [];
       }
       window.postMessage(init, '*');
+      if (params.has('cards')) {
+        setTimeout(() => {
+          window.postMessage(
+            {
+              type: 'advice',
+              advice: {
+                id: 'advice-1',
+                title: '修复建议',
+                file: 'src/net/fetch.ts',
+                startLine: 18,
+                endLine: 24,
+                problem: '请求没有超时控制，网络挂起时 Promise 永远不会结束。',
+                cause: 'fetch 默认没有超时，浏览器层的 TCP 重试可能持续数十秒。',
+                plan: '1. 用 AbortSignal.timeout 加 5 秒超时\n2. 捕获 TimeoutError 并转成业务错误',
+                impact: '调用方需要处理新的超时异常；正常路径行为不变。',
+              },
+            },
+            '*',
+          );
+          window.postMessage(
+            {
+              type: 'nudge',
+              quiet: true,
+              text: '这个文件有 3 处类型错误，需要我看一下吗？',
+              actions: [{ label: '帮我修' }, { label: '讲透这段' }],
+            },
+            '*',
+          );
+        }, 300);
+      }
       setTimeout(() => {
         window.postMessage(
           {
@@ -158,6 +191,9 @@
           '*',
         );
       }, 400);
+      if (params.has('settings')) {
+        setTimeout(() => document.getElementById('btn-settings')?.click(), 700);
+      }
     });
     const params = new URLSearchParams(location.search);
     if (params.has('embed')) {

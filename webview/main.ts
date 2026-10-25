@@ -1,6 +1,8 @@
 import type {
+  AdviceAction,
   AssetItem,
   HostMessage,
+  InterruptionLevel,
   PetAction,
   PetConfig,
   PetSnapshot,
@@ -55,6 +57,7 @@ const dom = {
   stage: el('stage'),
   petMount: el('pet-mount'),
   petAnchor: el('pet-anchor'),
+  unreadDot: el('unread-dot'),
   speech: el('speech'),
   speechText: el('speech-text'),
   speechActions: el('speech-actions'),
@@ -91,6 +94,7 @@ const state: {
   requestId?: string;
   rendererKey: string;
   initialized: boolean;
+  unread: number;
 } = {
   assets: [],
   sounds: [],
@@ -98,6 +102,7 @@ const state: {
   docsMode: false,
   rendererKey: '',
   initialized: false,
+  unread: 0,
 };
 
 // ------------------------------------------------------------------ 通信
@@ -170,7 +175,24 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
       chat.notice(message.text);
       toast(message.text, message.kind);
       break;
+    case 'nudge':
+      if (message.quiet) {
+        chat.addNudge(message.text, message.actions);
+        bumpUnread();
+      } else {
+        showSay(message.text, 9000, message.actions);
+        engine.play(message.action ?? 'alert');
+      }
+      break;
+    case 'advice':
+      chat.addAdvice(message.advice);
+      clearUnread();
+      break;
+    case 'adviceDone':
+      chat.resolveAdvice(message.id, message.action, message.ok);
+      break;
     case 'openChat':
+      clearUnread();
       dom.input.focus();
       if (message.draft) {
         dom.input.value = message.draft;
@@ -389,6 +411,7 @@ function submit(): void {
   }
   const id = newId();
   state.requestId = id;
+  clearUnread();
   post({ type: 'send', id, text, mode: state.docsMode ? 'docs' : 'chat' });
   dom.input.value = '';
   autoGrow();
@@ -427,11 +450,35 @@ dom.quick.addEventListener('click', (event) => {
     return;
   }
   const command =
-    kind === 'explain' ? CMD.explain : kind === 'fix' ? CMD.fix : kind === 'tests' ? CMD.tests : undefined;
+    kind === 'explain'
+      ? CMD.explain
+      : kind === 'teach'
+        ? CMD.teach
+        : kind === 'fix'
+          ? CMD.fix
+          : kind === 'tests'
+            ? CMD.tests
+            : undefined;
   if (command) {
     post({ type: 'command', command });
   }
 });
+
+// ------------------------------------------------------------------ 未读提醒
+
+function bumpUnread(): void {
+  state.unread = Math.min(99, state.unread + 1);
+  dom.unreadDot.textContent = String(state.unread);
+  dom.unreadDot.hidden = false;
+}
+
+function clearUnread(): void {
+  if (!state.unread) {
+    return;
+  }
+  state.unread = 0;
+  dom.unreadDot.hidden = true;
+}
 
 // ------------------------------------------------------------------ 点击桌宠
 
@@ -442,6 +489,8 @@ dom.petMount.addEventListener('click', (event) => {
   audio.play('click');
   engine.play('happy');
   post({ type: 'click' });
+  clearUnread();
+  chat.scrollToBottom(true);
 });
 
 // ------------------------------------------------------------------ 工具栏 / 抽屉
@@ -572,6 +621,14 @@ function renderSettings(): void {
       <label class="switch"><input type="checkbox" id="set-tts" ${config?.tts ? 'checked' : ''}/><span></span></label>
     </div>
     <div class="setting">
+      <div class="setting-head"><span>打扰程度</span><em id="interruption-value">平衡</em></div>
+      <div class="segmented" id="set-interruption">
+        <button data-value="quiet">安静</button>
+        <button data-value="balanced">平衡</button>
+        <button data-value="chatty">话多</button>
+      </div>
+    </div>
+    <div class="setting">
       <div class="setting-head"><span>音量</span><em id="volume-value">${Math.round((config?.volume ?? 0.6) * 100)}%</em></div>
       <input type="range" id="set-volume" min="0" max="100" value="${Math.round((config?.volume ?? 0.6) * 100)}" />
     </div>
@@ -597,6 +654,37 @@ function renderSettings(): void {
     if (tts.checked) {
       audio.speak('好呀，以后我会念给你听。', state.config?.ttsRate ?? 1);
     }
+  });
+
+  const interruptionLabels: Record<InterruptionLevel, string> = { quiet: '安静', balanced: '平衡', chatty: '话多' };
+  const segmented = dom.drawerBody.querySelector('#set-interruption');
+  const interruptionValue = dom.drawerBody.querySelector<HTMLElement>('#interruption-value');
+  const markInterruption = () => {
+    const current = state.config?.interruption ?? 'balanced';
+    segmented?.querySelectorAll<HTMLElement>('button').forEach((button) => {
+      button.classList.toggle('active', button.dataset.value === current);
+    });
+    if (interruptionValue) {
+      interruptionValue.textContent = interruptionLabels[current];
+    }
+  };
+  markInterruption();
+  segmented?.querySelectorAll<HTMLElement>('button').forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = button.dataset.value as InterruptionLevel;
+      if (state.config) {
+        state.config.interruption = value;
+      }
+      post({ type: 'command', command: 'deskpet.updateSetting', args: { key: 'pet.interruption', value } });
+      markInterruption();
+      toast(
+        value === 'quiet'
+          ? '安静模式：提醒只写进对话，不弹气泡'
+          : value === 'chatty'
+            ? '话多模式：提醒会直接弹气泡'
+            : '平衡模式：重要提醒才弹气泡，打字时不打扰',
+      );
+    });
   });
 
   const volume = dom.drawerBody.querySelector<HTMLInputElement>('#set-volume');
@@ -667,6 +755,32 @@ window.addEventListener('keydown', (event) => {
 
 dom.chatLog.addEventListener('click', (event) => {
   const target = event.target as HTMLElement;
+
+  const adviceButton = target.closest<HTMLElement>('[data-advice-action]');
+  if (adviceButton) {
+    const card = adviceButton.closest<HTMLElement>('[data-advice]');
+    const id = card?.dataset.advice;
+    const action = adviceButton.dataset.adviceAction as AdviceAction | undefined;
+    if (id && action) {
+      post({ type: 'adviceAction', id, action });
+    }
+    return;
+  }
+
+  const nudgeButton = target.closest<HTMLElement>('.chat-nudge-actions button');
+  if (nudgeButton) {
+    clearUnread();
+    const command = nudgeButton.dataset.command;
+    const send = nudgeButton.dataset.send;
+    if (command) {
+      post({ type: 'command', command });
+    } else if (send) {
+      dom.input.value = send;
+      submit();
+    }
+    return;
+  }
+
   const anchor = target.closest('a');
   if (anchor) {
     event.preventDefault();

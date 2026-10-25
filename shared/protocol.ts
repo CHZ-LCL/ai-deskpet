@@ -9,6 +9,23 @@ export type RendererKind = 'builtin' | 'image' | 'live2d' | 'vrm';
 
 export type SoundSlot = 'click' | 'happy' | 'alert' | 'error' | 'switch';
 
+/** 主动提醒的打扰程度 */
+export type InterruptionLevel = 'quiet' | 'balanced' | 'chatty';
+
+export type AdviceAction = 'apply' | 'diff' | 'copy' | 'dismiss';
+
+export interface AdviceCard {
+  id: string;
+  title: string;
+  file: string;
+  startLine: number;
+  endLine: number;
+  problem: string;
+  cause: string;
+  plan: string;
+  impact: string;
+}
+
 export interface PetAssets {
   /** 单张图片形象的 url */
   imageUri?: string;
@@ -36,6 +53,8 @@ export interface PetConfig {
   aiModel: string;
   /** 项目索引状态文案，例如「1234 文件 · 5678 块」 */
   contextLabel?: string;
+  /** 主动提醒的打扰程度 */
+  interruption: InterruptionLevel;
   /** 按需加载的渲染器脚本地址（webview 资源 url） */
   rendererScripts: { live2d?: string; vrm?: string };
 }
@@ -106,6 +125,16 @@ export type HostMessage =
   | { type: 'busy'; busy: boolean; label?: string }
   | { type: 'assets'; assets: AssetItem[]; sounds: SoundItem[] }
   | { type: 'notice'; text: string; kind?: 'info' | 'warn' | 'error' }
+  | {
+      /* 主动提醒：quiet=true 时只写入对话，不弹气泡 */
+      type: 'nudge';
+      text: string;
+      quiet: boolean;
+      action?: PetAction;
+      actions?: Array<{ label: string; command?: string; send?: string }>;
+    }
+  | { type: 'advice'; advice: AdviceCard }
+  | { type: 'adviceDone'; id: string; action: AdviceAction; ok: boolean }
   | { type: 'openChat'; draft?: string };
 
 /** webview -> 宿主 */
@@ -117,6 +146,7 @@ export type WebviewMessage =
   | { type: 'click' }
   | { type: 'switchPet'; id: string }
   | { type: 'switchSound'; slot: SoundSlot; id: string }
+  | { type: 'adviceAction'; id: string; action: AdviceAction }
   | { type: 'clearHistory' }
   | { type: 'reloadAssets' };
 
@@ -125,6 +155,7 @@ export const CMD = {
   focus: 'deskpet.focus',
   chat: 'deskpet.chat',
   explain: 'deskpet.explainSelection',
+  teach: 'deskpet.teachSelection',
   fix: 'deskpet.fixSelection',
   refactor: 'deskpet.refactorSelection',
   tests: 'deskpet.addTests',
