@@ -18,6 +18,7 @@ import {
 } from '../ai/prompts';
 import type { PetHost } from '../pet/host';
 import { checkStyle, inferStyleProfile } from '../standards/profile';
+import { isPatchStale } from '../inline/patch';
 import { truncate } from '../util';
 
 const execFileAsync = promisify(execFile);
@@ -287,7 +288,7 @@ export function bindAdviceActions(host: PetHost): void {
     if (action === 'apply') {
       const document = await vscode.workspace.openTextDocument(item.documentUri);
       // 用户看建议的这段时间里文件可能被改过，范围失效就拒绝应用
-      if (document.getText(item.range) !== item.originalText) {
+      if (isPatchStale(document.getText(item.range), item.originalText)) {
         host.resolveAdvice(id, action, false);
         host.notice('文件在你确认前发生了变化，请重新生成建议再应用。', 'warn');
         return;

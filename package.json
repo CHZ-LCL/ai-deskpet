@@ -613,6 +613,9 @@
     "compile": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit -p .",
+    "test": "node tests/run-unit.mjs",
+    "test:integration": "node tests/run-integration.mjs",
+    "test:visual": "node tests/run-visual.mjs",
     "lint": "tsc --noEmit -p .",
     "preview": "node dev/serve.mjs",
     "vsix": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies",
@@ -621,13 +624,18 @@
   },
   "devDependencies": {
     "@pixiv/three-vrm": "^3.1.6",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.16.0",
+    "@types/pngjs": "^6.0.5",
     "@types/three": "^0.170.0",
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^2.32.0",
     "esbuild": "^0.24.0",
+    "mocha": "^10.8.2",
     "pixi-live2d-display": "^0.4.0",
     "pixi.js": "6.5.10",
+    "pngjs": "^7.0.0",
     "three": "^0.170.0",
     "typescript": "^5.6.0"
   }

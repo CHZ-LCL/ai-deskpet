@@ -6,6 +6,8 @@ import { checkStyle, inferStyleProfile } from '../standards/profile';
 import { showProposedDiff } from '../commands/assist';
 import { enclosingRange } from '../commands/debug';
 import type { PetHost } from '../pet/host';
+import { isPatchStale } from './patch';
+
 interface InlinePatch {
   uri: vscode.Uri;
   range: vscode.Range;
@@ -223,7 +225,7 @@ async function applyInline(id?: string): Promise<void> {
   }
 
   const document = await vscode.workspace.openTextDocument(item.uri);
-  if (document.getText(item.range) !== item.originalText) {
+  if (isPatchStale(document.getText(item.range), item.originalText)) {
     vscode.window.showWarningMessage('代码在你确认前发生了变化，请重新生成建议。');
     return;
   }

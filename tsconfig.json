@@ -14,6 +14,6 @@
     "noEmit": true,
     "types": ["node", "vscode"]
   },
-  "include": ["src/**/*.ts", "webview/**/*.ts", "shared/**/*.ts"],
+  "include": ["src/**/*.ts", "webview/**/*.ts", "shared/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

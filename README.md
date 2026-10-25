@@ -552,7 +552,44 @@ npm run preview     # 起一个静态服务，看 dev/preview.html
 `dev/preview.html` 是纯前端的界面预览：用 stub 的 `acquireVsCodeApi` 注入一段示例数据，
 可以在浏览器里快速调样式，不用每次重载 VS Code。改完 `webview/` 后需要先 `npm run compile`。
 
+```bash
+npm test               # 单元测试（31 个）
+npm run test:integration  # 真实 VS Code 集成测试（首次会下载 VS Code）
+npm run test:visual    # 暗/亮截图对比（需本机 Chrome/Edge）
+```
+
 调试扩展本体：VS Code 打开仓库 → F5 → 在 Extension Host 窗口里操作。
+
+---
+
+## 测试
+
+三层，全部可本地复现，前两层已接进 CI。
+
+| 命令 | 内容 | 依赖 |
+| --- | --- | --- |
+| `npm test` | 31 个单元测试 | esbuild 打包 + `node --test`，`vscode` API 用 `tests/stubs/vscode.ts` 桩替换 |
+| `npm run test:integration` | 4 个集成测试 | 下载 stable VS Code，真实激活扩展 |
+| `npm run test:visual` | 暗色 / 亮色截图对比 | headless Chrome + pngjs |
+
+单元测试覆盖：
+
+- BM25 分词（camelCase / snake_case / 中文 2-gram）、分块重叠、排序正确性；
+- 规范扫描（JS/TS + Python）、规则包开关、白名单 glob / 前缀、行号偏移；
+- 5 种语言堆栈解析（JS、Python、Java、Go、Rust）；
+- 文档漂移（缺参 / 多参 / 纯摘要不误报 / Python docstring）；
+- 变更说明解析（四段、Markdown 标题、兜底、代码块隔离）；
+- 补丁新鲜度校验（原文变了就拒绝应用）。
+
+集成测试覆盖：扩展激活、19 个关键命令注册、`updateSetting` 写配置、fixture 工作区建索引、打开桌宠编辑器面板。
+
+视觉回归：
+
+- 基线在 `tests/visual/baseline/<platform>-<theme>.png`，实际截图输出到 `tests/visual/actual/`；
+- 阈值 0.5% 像素差异（单通道容差 12），跨平台字体会导致差异，所以**基线按平台维护、不放进 CI**；
+- 找不到 Chrome/Edge 时自动跳过，可用 `CHROME_PATH` 指定浏览器。
+
+明确不覆盖：需要真实模型返回的链路（对话、补丁、测试生成）、Live2D/VRM 渲染、Comments/CodeLens 的视觉表现。
 
 ---
 

@@ -64,6 +64,13 @@ export function tokenize(text: string): string[] {
     if (lower.length > 1 && !STOP_WORDS.has(lower)) {
       tokens.push(lower);
     }
+    // snake_case 再去掉下划线存一份，便于跨命名风格匹配
+    if (lower.includes('_')) {
+      const joined = lower.replace(/_/g, '');
+      if (joined.length > 1 && !STOP_WORDS.has(joined)) {
+        tokens.push(joined);
+      }
+    }
 
     const parts = match
       .replace(/([a-z0-9])([A-Z])/g, '$1 $2')

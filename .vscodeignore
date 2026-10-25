@@ -5,6 +5,8 @@ webview/**
 shared/**
 dev/**
 docs/**
+tests/**
+.vscode-test/**
 node_modules/**
 esbuild.mjs
 tsconfig.json
