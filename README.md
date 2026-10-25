@@ -3,6 +3,8 @@
 > 一只住在 VS Code 里的编程搭子：会聊天、会看你的代码、会陪你把 bug 修完，还能换成你自己画的 Live2D 或 3D 形象。
 
 - **双形态**：常驻侧边栏，也可以拖成编辑器标签放大看。
+- **行内对话**：`Ctrl+Alt+K` 直接在代码旁开问，答案挂在评论线程里，一键应用/看差异。
+- **CodeLens**：每个函数上方「讲解 / 重构」，不用选中、不用切面板。
 - **真·代码辅助**：讲解选区、诊断修复、重构、生成测试、写 Git 提交信息。
 - **会用形象和声音表达情绪**：保存成功会开心，报错会警觉，久坐会提醒你休息。
 - **形象随便换**：Live2D（Cubism 4）、VRM / GLB、单张图片 / GIF，导入即用。
@@ -359,6 +361,41 @@ ollama pull qwen2.5-coder:14b
 
 ---
 
+## 编辑器内集成（Inline Chat）
+
+目标是把“问一句”的路径缩短到不离开编辑器。
+
+### 行内对话：`Ctrl+Alt+K`
+
+1. 选中代码（或把光标放在函数里，自动取包含它的函数）。
+2. 按 `Ctrl+Alt+K`，在顶部输入框写下需求：“解释这段 / 重构成 async / 为什么这里会空指针”。
+3. 回答**以评论线程的形式挂在代码行下方**，边生成边刷新，不打开侧边栏。
+4. 如果回答里包含补丁，线程末尾会出现 **应用修改 · 查看差异** 两个链接；
+   同时弹一个原生轻提示作为兜底（应用前同样会校验原文有没有被改过）。
+
+评论线程是 VS Code 原生 UI，支持折叠、代码块高亮，和代码位置绑定；同一个文件再次提问会替换上一条，
+不会堆一堆线程。
+
+### 函数级 CodeLens
+
+每个函数/方法上方有两个入口：
+
+- `💬 讲解`：做什么、关键分支、可能的坑；
+- `🔧 重构`：现代写法 + 性能 + 团队规范，先给四段说明再给补丁。
+
+只对函数/方法显示，过滤掉 3 行以内的小函数，单文件最多 40 个；不想要可以在设置里关掉
+`deskpet.inline.codeLens`。
+
+### 零配置启动
+
+- 默认就指向本机 Ollama，不用填 Key、不用建配置文件。
+- 首次安装 9 秒后，如果检测到本机接口可用、但当前模型不存在，会**只问一次**：
+  “检测到 N 个可用模型（推荐 X），要自动配置吗？”
+- 任何时候也可以运行 **AI 桌宠: 快速配置 AI**：连接口 → 列出模型 → coder 类优先排序 → 一键选中。
+- 连不上时给明确出口：下载 Ollama / 打开设置；云端接口缺 Key 时直接引导到设置密钥。
+
+---
+
 ## 设置项
 
 | 设置 | 默认值 | 说明 |
@@ -395,6 +432,7 @@ ollama pull qwen2.5-coder:14b
 | `deskpet.style.indent` | `auto` | 生成代码缩进：auto / 2 / 4 / tab |
 | `deskpet.style.quotes` | `auto` | 引号：auto / single / double |
 | `deskpet.style.semicolons` | `auto` | 分号：auto / always / never |
+| `deskpet.inline.codeLens` | `true` | 函数上方的「讲解 / 重构」CodeLens |
 
 ---
 
@@ -403,6 +441,8 @@ ollama pull qwen2.5-coder:14b
 | 命令 | 快捷键 | 说明 |
 | --- | --- | --- |
 | `deskpet.chat` | `Ctrl+Alt+P` | 聚焦桌宠并准备聊天 |
+| `deskpet.inlineChat` | `Ctrl+Alt+K` | 行内对话：答案挂在代码旁 |
+| `deskpet.quickSetup` | — | 快速配置 AI，自动检测本机模型 |
 | `deskpet.explainSelection` | `Ctrl+Alt+E` | 讲解选中代码（无选区则讲光标附近） |
 | `deskpet.teachSelection` | — | 当老师讲透：逐行 / 逻辑 / 设计思路 |
 | `deskpet.fixSelection` | — | 诊断并修复，可应用 / 看 diff / 复制 |
@@ -435,6 +475,7 @@ ai-deskpet/
 │  ├─ config.ts             把设置 + 素材路径组装成 PetConfig
 │  ├─ ai/                   Ollama / OpenAI 兼容 / VS Code LM 适配器、上下文采集、提示词
 │  ├─ context/              项目索引（BM25）、依赖图、代码约定提取、LSP 符号解析
+│  ├─ inline/               行内对话（评论线程）与函数级 CodeLens
 │  ├─ docs/search.ts        资料检索（直连 URL / Tavily / Serper）
 │  ├─ commands/assist.ts    代码讲解、修复、重构、测试、提交信息
 │  └─ pet/                  宿主侧：状态、素材库、webview 消息总线

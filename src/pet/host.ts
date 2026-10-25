@@ -266,6 +266,61 @@ export class PetHost implements vscode.Disposable {
     await this.runDocs(id, query);
   }
 
+  /**
+   * 行内对话用的一次性问答：不写入侧边栏历史，但仍带项目上下文与团队规范。
+   */
+  async askInline(
+    request: string,
+    onDelta: (text: string) => void,
+    token?: vscode.CancellationToken,
+  ): Promise<string> {
+    const settings = await readAiSettings(this.context);
+    const provider = createProvider(settings);
+    const snapshot = this.state.snapshot();
+
+    const system = [
+      buildSystemPrompt({
+        name: vscode.workspace.getConfiguration('deskpet').get<string>('pet.name', '小豆'),
+        extra: vscode.workspace.getConfiguration('deskpet').get<string>('ai.extraInstructions', ''),
+        level: snapshot.level,
+        days: snapshot.daysTogether,
+      }),
+      `当前环境：${workspaceSummary()}；AI：${provider.label}。`,
+      standardsBlock(this.project.getConventions(), this.project.getStyleProfile()),
+    ].join('\n\n');
+
+    let bundle = '';
+    try {
+      bundle = await Promise.race([
+        this.project.buildBundle({
+          query: request,
+          activeUri: vscode.window.activeTextEditor?.document.uri,
+          maxChars: 5000,
+        }),
+        new Promise<string>((resolve) => setTimeout(() => resolve(''), 5000)),
+      ]);
+    } catch {
+      // 索引不可用或超时就先不附带，行内对话要快
+    }
+
+    const messages: ChatTurn[] = [
+      { role: 'system', content: system },
+      {
+        role: 'user',
+        content: bundle ? `${request}\n\n[项目上下文 · 自动检索]\n${bundle}` : request,
+      },
+    ];
+
+    const cts = new vscode.CancellationTokenSource();
+    const sub = token?.onCancellationRequested(() => cts.cancel());
+    try {
+      return await provider.chat(messages, onDelta, cts.token);
+    } finally {
+      sub?.dispose();
+      cts.dispose();
+    }
+  }
+
   async runTurn(options: TurnOptions): Promise<string> {
     if (this.busy) {
       this.say('等等，我还在想上一个问题…', { action: 'think' });

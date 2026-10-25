@@ -3,6 +3,9 @@ import { API_KEY_SECRET } from './ai';
 import { diffContentProvider, focusPet, registerAssistCommands, bindAdviceActions } from './commands/assist';
 import { registerDebugCommands } from './commands/debug';
 import { registerStandardsCommands } from './commands/standards';
+import { registerInlineChat } from './inline/chat';
+import { registerInlineCodeLens } from './inline/codeLens';
+import { quickSetup, registerAutoSetup } from './ai/setup';
 import { registerTerminalCapture } from './debug/terminalLog';
 import { ProjectContext } from './context/project';
 import { DOCS_KEY_SECRET } from './docs/search';
@@ -52,6 +55,7 @@ export function activate(context: vscode.ExtensionContext): void {
     await host.refreshAll();
   });
   register(CMD.setApiKey, () => setApiKey(context, host));
+  register(CMD.quickSetup, () => quickSetup(context, host));
   register(CMD.resetPet, () => resetPet(host, state));
   register(CMD.reindex, async () => {
     await project.rebuild();
@@ -82,6 +86,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(...registerAssistCommands(host));
   context.subscriptions.push(...registerDebugCommands(host));
   context.subscriptions.push(...registerStandardsCommands(host));
+  registerInlineChat(context, host);
+  registerInlineCodeLens(context);
   bindAdviceActions(host);
 
   registerTerminalCapture(context, (failure) => {
@@ -102,6 +108,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerReactions(context, host, project);
   registerStartup(context);
   registerFirstRun(context);
+  registerAutoSetup(context, host);
 
   // 后台建索引，别和激活流程抢时间
   const indexTimer = setTimeout(() => {

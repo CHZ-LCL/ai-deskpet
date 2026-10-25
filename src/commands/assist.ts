@@ -358,10 +358,20 @@ export function bindAdviceActions(host: PetHost): void {
 
 async function showDiff(item: PendingAdvice): Promise<void> {
   const document = await vscode.workspace.openTextDocument(item.documentUri);
+  await showProposedDiff(document, item.range, item.code, item.card.title);
+}
+
+/** 打开“原文 vs 建议”的并排 diff，供行内对话和规范整改复用。 */
+export async function showProposedDiff(
+  document: vscode.TextDocument,
+  range: vscode.Range,
+  code: string,
+  title: string,
+): Promise<void> {
   const full = document.getText();
-  const start = document.offsetAt(item.range.start);
-  const end = document.offsetAt(item.range.end);
-  const proposed = full.slice(0, start) + item.code + full.slice(end);
+  const start = document.offsetAt(range.start);
+  const end = document.offsetAt(range.end);
+  const proposed = full.slice(0, start) + code + full.slice(end);
 
   const ext = path.extname(document.fileName) || '.txt';
   const id = `/${crypto.randomUUID()}${ext}`;
@@ -371,7 +381,7 @@ async function showDiff(item: PendingAdvice): Promise<void> {
     'vscode.diff',
     document.uri,
     right,
-    `${item.card.title} · ${path.basename(document.fileName)}`,
+    `${title} · ${path.basename(document.fileName)}`,
     { preview: true },
   );
 }

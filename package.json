@@ -123,6 +123,16 @@
         "category": "AI 桌宠"
       },
       {
+        "command": "deskpet.inlineChat",
+        "title": "行内对话（在代码旁提问 / 重构）",
+        "category": "AI 桌宠"
+      },
+      {
+        "command": "deskpet.quickSetup",
+        "title": "快速配置 AI（自动检测本机模型）",
+        "category": "AI 桌宠"
+      },
+      {
         "command": "deskpet.refactorSelection",
         "title": "重构选中代码",
         "category": "AI 桌宠"
@@ -193,6 +203,10 @@
       ],
       "editor/context": [
         {
+          "command": "deskpet.inlineChat",
+          "group": "deskpet@0"
+        },
+        {
           "command": "deskpet.explainSelection",
           "when": "editorHasSelection",
           "group": "deskpet@1"
@@ -237,6 +251,12 @@
         "command": "deskpet.chat",
         "key": "ctrl+alt+p",
         "mac": "cmd+alt+p"
+      },
+      {
+        "command": "deskpet.inlineChat",
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k",
+        "when": "editorTextFocus"
       },
       {
         "command": "deskpet.explainSelection",
@@ -562,6 +582,11 @@
           ],
           "default": "auto",
           "description": "生成代码是否加分号。auto 表示跟随当前文件。"
+        },
+        "deskpet.inline.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "在每个函数/方法上方显示「讲解 / 重构」的 CodeLens。"
         }
       }
     }
